@@ -1,0 +1,54 @@
+[project]
+name = "lifeline-mesh"
+plan = "pro"
+region = "eu-west-1"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+
+[db.migrations]
+enabled = true
+directory = "./migrations"
+
+[db.seed]
+enabled = true
+sql = "./seed.sql"
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://lifelinemesh.com/*"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.sms]
+provider = "twilio"
+
+[auth.sms.twilio]
+account_sid = ""
+auth_token = ""
+message_service_sid = ""
+
+[edge_runtime]
+enabled = true
+policy = "per_worker"
+
+[functions]
+enabled = true
+verify_jwt = true
+
+[storage]
+enabled = true
+file_size_limit = "50MB"
+
+[realtime]
+enabled = true
+wal_level = "logical"
+
+[analytics]
+enabled = true
+
+[experimental]
+orioledb_version = "1"
