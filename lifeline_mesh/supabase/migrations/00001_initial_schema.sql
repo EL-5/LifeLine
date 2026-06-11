@@ -215,7 +215,7 @@ CREATE POLICY emergencies_patient_access ON emergencies
     FOR ALL USING (patient_id = auth.uid());
 CREATE POLICY emergencies_family_access ON emergencies
     FOR SELECT USING (
-        EXISTS (SELECT 1 FROM family_connections WHERE emergency_id = emergencies.id AND family_member_id = auth.uid())
+        EXISTS (SELECT 1 FROM family_connections WHERE user_id = emergencies.patient_id AND family_member_id = auth.uid())
     );
 CREATE POLICY emergencies_driver_access ON emergencies
     FOR SELECT USING (driver_id = auth.uid());
