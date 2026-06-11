@@ -24,11 +24,40 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  void _sendOtp() {
+  Future<void> _sendOtp() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    // Close keyboard
+    FocusScope.of(context).unfocus();
+
     final phone = _phoneController.text.trim();
-    ref.read(authProvider.notifier).sendOtp(phone);
-    context.push('/auth/otp', extra: phone);
+    
+    // Make sure we have the correct phone format (must include +)
+    final formattedPhone = phone.startsWith('+') ? phone : '+$phone';
+
+    try {
+      await ref.read(authProvider.notifier).sendOtp(formattedPhone);
+      
+      if (mounted) {
+        final authState = ref.read(authProvider);
+        if (authState.error != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: ${authState.error}')),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Success! Pushing to OTP screen...')),
+          );
+          context.go('/auth/otp', extra: formattedPhone);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Crash: $e')),
+        );
+      }
+    }
   }
 
   @override

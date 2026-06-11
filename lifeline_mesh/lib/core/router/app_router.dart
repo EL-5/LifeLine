@@ -34,13 +34,12 @@ import '../../features/admin/screens/audit_log_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
-GoRouter createRouter(WidgetRef ref) {
-  final authState = ref.watch(authProvider);
-
-  return GoRouter(
+final routerProvider = Provider<GoRouter>((ref) {
+  final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/splash',
     redirect: (context, state) {
+      final authState = ref.read(authProvider);
       final isLoggedIn = authState.status == AuthStatus.authenticated;
       final isInitialOrLoading = authState.status == AuthStatus.initial || authState.status == AuthStatus.loading;
       final isOnAuthScreen = state.matchedLocation.startsWith('/auth');
@@ -203,7 +202,13 @@ GoRouter createRouter(WidgetRef ref) {
       ),
     ],
   );
-}
+
+  ref.listen(authProvider, (previous, next) {
+    router.refresh();
+  });
+
+  return router;
+});
 
 String _getDefaultRouteForRole(UserRole role) {
   switch (role) {

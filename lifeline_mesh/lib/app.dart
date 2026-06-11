@@ -24,6 +24,7 @@ class _LifelineMeshAppState extends ConsumerState<LifelineMeshApp> {
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
+    final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
       title: 'Lifeline Mesh',
@@ -31,7 +32,7 @@ class _LifelineMeshAppState extends ConsumerState<LifelineMeshApp> {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
-      routerConfig: createRouter(ref),
+      routerConfig: router,
     );
   }
 }
