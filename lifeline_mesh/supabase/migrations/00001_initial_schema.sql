@@ -37,6 +37,29 @@ CREATE TABLE users (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE hospitals (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    location JSONB NOT NULL DEFAULT '{"lat": 0, "lng": 0, "address": ""}',
+    emergency_capacity INT DEFAULT 0,
+    verification_status verification_status DEFAULT 'unverified',
+    contact_phone TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE drivers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    vehicle_type TEXT,
+    vehicle_registration TEXT,
+    availability_status BOOLEAN DEFAULT FALSE,
+    verification_status verification_status DEFAULT 'unverified',
+    current_location JSONB DEFAULT '{"lat": 0, "lng": 0}',
+    total_earnings DECIMAL(12,2) DEFAULT 0.00,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 CREATE TABLE emergencies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -73,29 +96,6 @@ CREATE TABLE contributions (
     payment_method payment_method DEFAULT 'mobile_money',
     payment_status payment_status DEFAULT 'pending',
     moolre_transaction_id TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE drivers (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    vehicle_type TEXT,
-    vehicle_registration TEXT,
-    availability_status BOOLEAN DEFAULT FALSE,
-    verification_status verification_status DEFAULT 'unverified',
-    current_location JSONB DEFAULT '{"lat": 0, "lng": 0}',
-    total_earnings DECIMAL(12,2) DEFAULT 0.00,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE hospitals (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    location JSONB NOT NULL DEFAULT '{"lat": 0, "lng": 0, "address": ""}',
-    emergency_capacity INT DEFAULT 0,
-    verification_status verification_status DEFAULT 'unverified',
-    contact_phone TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
