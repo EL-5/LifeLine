@@ -1,57 +1,71 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../providers/community_provider.dart';
 
-class CommunityFeedScreen extends StatefulWidget {
+class CommunityFeedScreen extends ConsumerWidget {
   const CommunityFeedScreen({super.key});
 
   @override
-  State<CommunityFeedScreen> createState() => _CommunityFeedScreenState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final campaignsAsync = ref.watch(communityEmergenciesProvider);
 
-class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
-  final List<Map<String, dynamic>> _campaigns = [];
-
-  @override
-  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Community Support')),
-      body: _campaigns.isEmpty
-          ? EmptyState(
-              icon: Icons.volunteer_activism,
-              title: 'No Active Campaigns',
-              subtitle: 'Verified emergency campaigns needing support will appear here',
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _campaigns.length,
-              itemBuilder: (context, index) {
-                final campaign = _campaigns[index];
-                return _CampaignCard(
-                  campaign: campaign,
-                  onTap: () => context.push(
-                    '/community/campaign/${campaign['id']}',
-                  ),
-                );
-              },
-            ),
+      body: campaignsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (campaigns) => campaigns.isEmpty
+            ? const EmptyState(
+                icon: Icons.volunteer_activism,
+                title: 'No Active Campaigns',
+                subtitle:
+                    'Verified emergency campaigns needing support will appear here',
+              )
+            : ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: campaigns.length,
+                itemBuilder: (context, index) {
+                  final campaign = campaigns[index];
+                  return _CampaignCard(
+                    title: campaign.category,
+                    location: campaign.location['address'] as String? ??
+                        'Unknown location',
+                    raised: campaign.raisedAmount,
+                    target: campaign.targetAmount,
+                    onTap: () => context.push(
+                      '/community/campaign/${campaign.id}',
+                    ),
+                  );
+                },
+              ),
+      ),
     );
   }
 }
 
 class _CampaignCard extends StatelessWidget {
-  final Map<String, dynamic> campaign;
+  final String title;
+  final String location;
+  final double raised;
+  final double target;
   final VoidCallback onTap;
 
-  const _CampaignCard({required this.campaign, required this.onTap});
+  const _CampaignCard({
+    required this.title,
+    required this.location,
+    required this.raised,
+    required this.target,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final progress = (campaign['raised'] as num?)?.toDouble() ?? 0;
-    final target = (campaign['target'] as num?)?.toDouble() ?? 1;
+    final progress = target > 0 ? (raised / target).clamp(0.0, 1.0) : 0.0;
 
     return Card(
       child: InkWell(
@@ -82,11 +96,11 @@ class _CampaignCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          campaign['title'] ?? 'Emergency Campaign',
+                          title,
                           style: AppTextStyles.titleSmall,
                         ),
                         Text(
-                          campaign['location'] ?? 'Unknown location',
+                          location,
                           style: const TextStyle(
                             color: AppColors.textSecondary,
                             fontSize: 12,
@@ -96,7 +110,8 @@ class _CampaignCard extends StatelessWidget {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppColors.successGreenLight,
                       borderRadius: BorderRadius.circular(8),
@@ -114,7 +129,7 @@ class _CampaignCard extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               LinearProgressIndicator(
-                value: progress / target,
+                value: progress,
                 backgroundColor: AppColors.divider,
                 color: AppColors.successGreen,
                 minHeight: 8,
@@ -125,7 +140,7 @@ class _CampaignCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'GHS ${progress.toStringAsFixed(0)} raised',
+                    'GHS ${raised.toStringAsFixed(0)} raised',
                     style: const TextStyle(
                       color: AppColors.successGreen,
                       fontWeight: FontWeight.w600,

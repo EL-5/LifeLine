@@ -2,6 +2,32 @@
 -- AI-Powered Emergency Coordination & Medical Funding Infrastructure
 
 -- ========================================
+-- CLEANUP (Ensures script can be run multiple times)
+-- ========================================
+DROP TABLE IF EXISTS trust_events CASCADE;
+DROP TABLE IF EXISTS audit_logs CASCADE;
+DROP TABLE IF EXISTS payments CASCADE;
+DROP TABLE IF EXISTS contributions CASCADE;
+DROP TABLE IF EXISTS family_connections CASCADE;
+DROP TABLE IF EXISTS emergencies CASCADE;
+DROP TABLE IF EXISTS drivers CASCADE;
+DROP TABLE IF EXISTS hospitals CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
+DROP TYPE IF EXISTS trust_event_status CASCADE;
+DROP TYPE IF EXISTS validation_type CASCADE;
+DROP TYPE IF EXISTS payment_type CASCADE;
+DROP TYPE IF EXISTS verification_status CASCADE;
+DROP TYPE IF EXISTS payment_status CASCADE;
+DROP TYPE IF EXISTS payment_method CASCADE;
+DROP TYPE IF EXISTS connection_status CASCADE;
+DROP TYPE IF EXISTS relationship_type CASCADE;
+DROP TYPE IF EXISTS emergency_status CASCADE;
+DROP TYPE IF EXISTS severity_level CASCADE;
+DROP TYPE IF EXISTS emergency_category CASCADE;
+DROP TYPE IF EXISTS user_role CASCADE;
+
+-- ========================================
 -- ENUMS
 -- ========================================
 
@@ -136,16 +162,16 @@ CREATE TABLE trust_events (
 -- INDEXES
 -- ========================================
 
-CREATE INDEX idx_emergencies_status_created ON emergencies(status, created_at DESC);
-CREATE INDEX idx_emergencies_patient ON emergencies(patient_id);
-CREATE INDEX idx_contributions_emergency ON contributions(emergency_id);
-CREATE INDEX idx_drivers_availability ON drivers(availability_status) WHERE availability_status = TRUE;
-CREATE INDEX idx_users_phone ON users(phone);
-CREATE INDEX idx_users_role ON users(role);
-CREATE INDEX idx_audit_logs_actor ON audit_logs(actor_id, created_at DESC);
-CREATE INDEX idx_trust_events_emergency ON trust_events(emergency_id);
-CREATE INDEX idx_family_connections_user ON family_connections(user_id);
-CREATE INDEX idx_payments_emergency ON payments(emergency_id);
+CREATE INDEX IF NOT EXISTS idx_emergencies_status_created ON emergencies(status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_emergencies_patient ON emergencies(patient_id);
+CREATE INDEX IF NOT EXISTS idx_contributions_emergency ON contributions(emergency_id);
+CREATE INDEX IF NOT EXISTS idx_drivers_availability ON drivers(availability_status) WHERE availability_status = TRUE;
+CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_actor ON audit_logs(actor_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_trust_events_emergency ON trust_events(emergency_id);
+CREATE INDEX IF NOT EXISTS idx_family_connections_user ON family_connections(user_id);
+CREATE INDEX IF NOT EXISTS idx_payments_emergency ON payments(emergency_id);
 
 -- ========================================
 -- TRIGGERS

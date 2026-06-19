@@ -1,39 +1,55 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../../providers/emergency_provider.dart';
 
-class DriverNavigationScreen extends StatelessWidget {
+class DriverNavigationScreen extends ConsumerWidget {
   final String emergencyId;
 
   const DriverNavigationScreen({super.key, required this.emergencyId});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final emergencyAsync = ref.watch(emergencyDetailProvider(emergencyId));
+
     return Scaffold(
       appBar: AppBar(title: const Text('Navigation')),
-      body: Column(
-        children: [
-          // Map placeholder
-          Expanded(
-            child: Container(
-              color: AppColors.calmBackground,
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.map, size: 64, color: AppColors.textSecondary),
-                    SizedBox(height: 8),
-                    Text('Navigation Map',
-                        style: TextStyle(color: AppColors.textSecondary)),
-                    Text('Google Maps / OSM integration',
-                        style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                  ],
+      body: emergencyAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (emergency) {
+          if (emergency == null) return const Center(child: Text('Emergency not found'));
+
+          final emergencyLocation = LatLng(
+            emergency.location['lat'] as double,
+            emergency.location['lng'] as double,
+          );
+
+          return Column(
+            children: [
+              // Live Google Map
+              Expanded(
+                child: GoogleMap(
+                  initialCameraPosition: CameraPosition(
+                    target: emergencyLocation,
+                    zoom: 15,
+                  ),
+                  markers: {
+                    Marker(
+                      markerId: const MarkerId('emergency'),
+                      position: emergencyLocation,
+                      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+                      infoWindow: const InfoWindow(title: 'Patient Location'),
+                    )
+                  },
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: true,
                 ),
               ),
-            ),
-          ),
-          // Bottom controls
+              // Bottom controls
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -52,16 +68,16 @@ class DriverNavigationScreen extends StatelessWidget {
                   children: [
                     const Icon(Icons.location_on, color: AppColors.emergencyRed),
                     const SizedBox(width: 8),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Patient Location', style: TextStyle(fontWeight: FontWeight.w600)),
-                          Text('Accra Central', style: TextStyle(color: AppColors.textSecondary)),
+                          const Text('Patient Location', style: TextStyle(fontWeight: FontWeight.w600)),
+                          Text(emergency.location['address'] ?? 'Emergency Site', style: const TextStyle(color: AppColors.textSecondary)),
                         ],
                       ),
                     ),
-                    const Text('2.3 km', style: TextStyle(fontWeight: FontWeight.w600)),
+                    const Text('Navigating...', style: TextStyle(fontWeight: FontWeight.w600)),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -107,7 +123,9 @@ class DriverNavigationScreen extends StatelessWidget {
               ],
             ),
           ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }

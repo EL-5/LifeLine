@@ -6,6 +6,9 @@ import '../../../core/widgets/emergency_badge.dart';
 import '../../../providers/emergency_provider.dart';
 import '../../../models/enums/emergency_status.dart';
 import '../../../models/emergency_model.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class EmergencyLiveTrackingScreen extends ConsumerWidget {
   final String emergencyId;
@@ -35,13 +38,107 @@ class EmergencyLiveTrackingScreen extends ConsumerWidget {
   }
 }
 
-class _TrackingContent extends StatelessWidget {
+class _TrackingContent extends ConsumerStatefulWidget {
   final EmergencyModel emergency;
 
   const _TrackingContent({required this.emergency});
 
   @override
+  ConsumerState<_TrackingContent> createState() => _TrackingContentState();
+}
+
+class _TrackingContentState extends ConsumerState<_TrackingContent> {
+  late FlutterTts _flutterTts;
+  bool _voiceEnabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _flutterTts = FlutterTts();
+    _speakInstructions();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TrackingContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.emergency.status != widget.emergency.status) {
+      _speakInstructions();
+    }
+  }
+
+  Future<void> _speakInstructions() async {
+    if (!_voiceEnabled) {
+      await _flutterTts.stop();
+      return;
+    }
+    
+    String message = "Emergency alert active. Help is on the way. Please stay calm.";
+    
+    if (widget.emergency.status == EmergencyStatus.dispatched) {
+      message = "An ambulance has been dispatched and is en route to your location. Please ensure the path is clear.";
+    } else if (widget.emergency.status == EmergencyStatus.driverArrived) {
+      message = "The ambulance has arrived. Please step outside.";
+    }
+
+    if (widget.emergency.status == EmergencyStatus.pending) {
+      if (widget.emergency.category == 'chest_pain') {
+        message += " Please sit down, rest, and loosen any tight clothing.";
+      } else if (widget.emergency.category == 'breathing_difficulty') {
+        message += " Sit upright and try to take slow, deep breaths.";
+      } else if (widget.emergency.category == 'accident' || widget.emergency.category == 'violence_injury') {
+        message += " Do not move if you suspect a neck or back injury. Apply pressure to any bleeding.";
+      } else if (widget.emergency.category == 'stroke') {
+        message += " Keep the person safe and at rest. Note the time the symptoms started.";
+      }
+    }
+
+    await _flutterTts.setLanguage("en-US");
+    await _flutterTts.setSpeechRate(0.5);
+    await _flutterTts.speak(message);
+  }
+
+  @override
+  void dispose() {
+    _flutterTts.stop();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final driverLocationAsync = widget.emergency.driverId != null
+        ? ref.watch(driverLocationStreamProvider(widget.emergency.driverId!))
+        : const AsyncValue.data(null);
+
+    final emergencyLocation = LatLng(
+      widget.emergency.location['lat'] as double,
+      widget.emergency.location['lng'] as double,
+    );
+
+    LatLng? driverLocation;
+    driverLocationAsync.whenData((loc) {
+      if (loc != null && loc['location'] != null) {
+        driverLocation = LatLng(
+          loc['location']['lat'] as double,
+          loc['location']['lng'] as double,
+        );
+      }
+    });
+
+    final markers = {
+      Marker(
+        markerId: const MarkerId('emergency_location'),
+        position: emergencyLocation,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        infoWindow: const InfoWindow(title: 'Emergency Location'),
+      ),
+      if (driverLocation != null)
+        Marker(
+          markerId: const MarkerId('driver_location'),
+          position: driverLocation!,
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+          infoWindow: const InfoWindow(title: 'Ambulance Driver'),
+        ),
+    };
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -60,7 +157,18 @@ class _TrackingContent extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text('Status Timeline', style: AppTextStyles.titleMedium),
                       const Spacer(),
-                      StatusBadge(status: emergency.status),
+                      IconButton(
+                        icon: Icon(
+                          _voiceEnabled ? Icons.volume_up : Icons.volume_off,
+                          color: _voiceEnabled ? AppColors.trustBlue : AppColors.textSecondary,
+                        ),
+                        onPressed: () {
+                          setState(() => _voiceEnabled = !_voiceEnabled);
+                          if (!_voiceEnabled) _flutterTts.stop();
+                          else _speakInstructions();
+                        },
+                      ),
+                      StatusBadge(status: widget.emergency.status),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -73,26 +181,26 @@ class _TrackingContent extends StatelessWidget {
                   _StatusStep(
                     icon: Icons.directions_car,
                     label: 'Driver Dispatched',
-                    isComplete: emergency.status.index >= EmergencyStatus.dispatched.index,
-                    isActive: emergency.status == EmergencyStatus.dispatched,
+                    isComplete: widget.emergency.status.index >= EmergencyStatus.dispatched.index,
+                    isActive: widget.emergency.status == EmergencyStatus.dispatched,
                   ),
                   _StatusStep(
                     icon: Icons.person_pin,
                     label: 'Driver Arrived',
-                    isComplete: emergency.status.index >= EmergencyStatus.driverArrived.index,
-                    isActive: emergency.status == EmergencyStatus.driverArrived,
+                    isComplete: widget.emergency.status.index >= EmergencyStatus.driverArrived.index,
+                    isActive: widget.emergency.status == EmergencyStatus.driverArrived,
                   ),
                   _StatusStep(
                     icon: Icons.local_hospital,
                     label: 'Arrived at Hospital',
-                    isComplete: emergency.status.index >= EmergencyStatus.arrivedHospital.index,
-                    isActive: emergency.status == EmergencyStatus.arrivedHospital,
+                    isComplete: widget.emergency.status.index >= EmergencyStatus.arrivedHospital.index,
+                    isActive: widget.emergency.status == EmergencyStatus.arrivedHospital,
                   ),
                   _StatusStep(
                     icon: Icons.check_circle,
                     label: 'In Treatment',
-                    isComplete: emergency.status.index >= EmergencyStatus.inTreatment.index,
-                    isActive: emergency.status == EmergencyStatus.inTreatment,
+                    isComplete: widget.emergency.status.index >= EmergencyStatus.inTreatment.index,
+                    isActive: widget.emergency.status == EmergencyStatus.inTreatment,
                   ),
                 ],
               ),
@@ -100,27 +208,22 @@ class _TrackingContent extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // Map placeholder
+          // Live Google Map
           Card(
-            child: Container(
-              height: 200,
-              decoration: BoxDecoration(
-                color: AppColors.calmBackground,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.map, size: 48, color: AppColors.textSecondary),
-                    SizedBox(height: 8),
-                    Text('Live map will appear here'),
-                    Text(
-                      'Google Maps / OSM integration',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                    ),
-                  ],
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: SizedBox(
+              height: 250,
+              child: GoogleMap(
+                initialCameraPosition: CameraPosition(
+                  target: driverLocation ?? emergencyLocation,
+                  zoom: 15,
                 ),
+                markers: markers,
+                myLocationEnabled: true,
+                myLocationButtonEnabled: false,
+                zoomControlsEnabled: false,
+                mapToolbarEnabled: false,
               ),
             ),
           ),
@@ -135,23 +238,45 @@ class _TrackingContent extends StatelessWidget {
                 children: [
                   Text('Emergency Details', style: AppTextStyles.titleMedium),
                   const SizedBox(height: 12),
-                  _detailRow('Category', emergency.category),
-                  _detailRow('Severity', emergency.severity.displayName),
-                  _detailRow('Emergency ID', emergency.id.substring(0, 8)),
-                  _detailRow('Status', emergency.status.value),
-                  if (emergency.targetAmount > 0) ...[
+                  _detailRow('Category', widget.emergency.category),
+                  _detailRow('Severity', widget.emergency.severity.displayName),
+                  _detailRow('Emergency ID', widget.emergency.id.substring(0, 8)),
+                  _detailRow('Status', widget.emergency.status.value),
+                  if (widget.emergency.targetAmount > 0) ...[
                     const SizedBox(height: 8),
                     Text(
-                      'Funding: GHS ${emergency.raisedAmount} / GHS ${emergency.targetAmount}',
+                      'Funding: GHS ${widget.emergency.raisedAmount} / GHS ${widget.emergency.targetAmount}',
                       style: const TextStyle(fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 4),
                     LinearProgressIndicator(
-                      value: emergency.fundingProgress,
+                      value: widget.emergency.fundingProgress,
                       backgroundColor: AppColors.divider,
                       color: AppColors.successGreen,
                     ),
                   ],
+                  if (widget.emergency.driverId != null) ...[
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.trustBlue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        icon: const Icon(Icons.call),
+                        label: const Text('Call Ambulance Driver', style: TextStyle(fontWeight: FontWeight.w600)),
+                        onPressed: () async {
+                          final uri = Uri.parse('tel:+233241234567');
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri);
+                          }
+                        },
+                      ),
+                    ),
+                  ]
                 ],
               ),
             ),

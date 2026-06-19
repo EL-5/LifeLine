@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="lifeline_mesh"
+        android:label="Lifeline Mesh"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -45,6 +45,9 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+        </intent>
     </queries>
     <!-- Network -->
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -56,6 +59,8 @@
     <!-- Emergency calls -->
     <uses-permission android:name="android.permission.CALL_PHONE"/>
     <uses-permission android:name="android.permission.READ_CONTACTS"/>
+    <!-- Voice & Audio -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <!-- Notifications & Device -->
     <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>

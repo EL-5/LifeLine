@@ -31,8 +31,23 @@ final activeEmergencyProvider = StreamProvider<EmergencyModel?>((ref) {
 });
 
 final emergencyDetailProvider =
-    FutureProvider.family<EmergencyModel?, String>((ref, id) async {
+    StreamProvider.family<EmergencyModel?, String>((ref, id) {
   final supabase = ref.read(supabaseServiceProvider);
-  final data = await supabase.querySingle(ApiConstants.tableEmergencies, 'id', id);
-  return data != null ? EmergencyModel.fromJson(data) : null;
+  return supabase.client
+      .from(ApiConstants.tableEmergencies)
+      .stream(primaryKey: ['id'])
+      .eq('id', id)
+      .map((list) =>
+          list.isNotEmpty ? EmergencyModel.fromJson(list.first) : null);
+});
+
+final driverLocationStreamProvider = StreamProvider.family<Map<String, dynamic>?, String>((ref, driverId) {
+  final supabase = ref.read(supabaseServiceProvider);
+  return supabase.client
+      .from('driver_location_updates')
+      .stream(primaryKey: ['id'])
+      .eq('driver_id', driverId)
+      .order('timestamp', ascending: false)
+      .limit(1)
+      .map((list) => list.isNotEmpty ? list.first : null);
 });

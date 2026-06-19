@@ -1,7 +1,0 @@
-{
-  "startupCommands": [
-    "cd lifeline_mesh && flutter pub get; flutter run -d web-server --web-port 3000"
-  ],
-  "projectId": "64842f3c-9031-4236-97f4-d1e371786a25",
-  "templateId": "any"
-}

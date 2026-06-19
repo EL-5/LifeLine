@@ -22,3 +22,19 @@ final availableEmergenciesProvider = StreamProvider<List<EmergencyModel>>((ref) 
           .where((e) => e.status.needsDriver)
           .toList());
 });
+
+final driverEarningsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final supabase = ref.read(supabaseServiceProvider);
+  final userId = supabase.currentUser?.id;
+  if (userId == null) return [];
+
+  final data = await supabase.client
+      .from('payments')
+      .select('id, amount, status, created_at, emergencies(category)')
+      .eq('recipient_id', userId)
+      .eq('payment_type', 'driver_payout')
+      .order('created_at', ascending: false)
+      .limit(50);
+      
+  return List<Map<String, dynamic>>.from(data);
+});

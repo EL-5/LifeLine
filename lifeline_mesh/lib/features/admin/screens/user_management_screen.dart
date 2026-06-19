@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../providers/admin_provider.dart';
 
-class UserManagementScreen extends StatefulWidget {
+class UserManagementScreen extends ConsumerStatefulWidget {
   const UserManagementScreen({super.key});
 
   @override
-  State<UserManagementScreen> createState() => _UserManagementScreenState();
+  ConsumerState<UserManagementScreen> createState() =>
+      _UserManagementScreenState();
 }
 
-class _UserManagementScreenState extends State<UserManagementScreen> {
+class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
   final _searchController = TextEditingController();
-  final List<Map<String, String>> _users = [];
+  String _searchQuery = '';
 
   @override
   void dispose() {
@@ -21,6 +24,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final usersAsync = ref.watch(allUsersProvider(_searchQuery));
+
     return Scaffold(
       appBar: AppBar(title: const Text('User Management')),
       body: Column(
@@ -29,6 +34,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             padding: const EdgeInsets.all(16),
             child: TextField(
               controller: _searchController,
+              onChanged: (value) => setState(() => _searchQuery = value),
               decoration: InputDecoration(
                 hintText: 'Search users by name or phone...',
                 prefixIcon: const Icon(Icons.search),
@@ -41,37 +47,50 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             ),
           ),
           Expanded(
-            child: _users.isEmpty
-                ? const EmptyState(
-                    icon: Icons.people_outline,
-                    title: 'No Users Found',
-                    subtitle: 'Users will appear here once registered',
-                  )
-                : ListView.builder(
-                    itemCount: _users.length,
-                    itemBuilder: (context, index) {
-                      final user = _users[index];
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: AppColors.trustBlueLight,
-                          child: Text(
-                            user['name']?[0] ?? '?',
-                            style: const TextStyle(color: AppColors.trustBlue),
+            child: usersAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, stack) => Center(child: Text('Error: $err')),
+              data: (users) => users.isEmpty
+                  ? const EmptyState(
+                      icon: Icons.people_outline,
+                      title: 'No Users Found',
+                      subtitle: 'Try a different search term',
+                    )
+                  : ListView.builder(
+                      itemCount: users.length,
+                      itemBuilder: (context, index) {
+                        final user = users[index];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: AppColors.trustBlueLight,
+                            child: Text(
+                              (user.fullName ?? user.id).substring(0, 1).toUpperCase(),
+                              style: const TextStyle(
+                                  color: AppColors.trustBlue),
+                            ),
                           ),
-                        ),
-                        title: Text(user['name'] ?? 'Unknown'),
-                        subtitle: Text('${user['role']} - ${user['phone']}'),
-                        trailing: PopupMenuButton<String>(
-                          onSelected: (value) {},
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                            const PopupMenuItem(value: 'suspend', child: Text('Suspend')),
-                            const PopupMenuItem(value: 'delete', child: Text('Delete')),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+                          title: Text(user.fullName ?? 'Unknown'),
+                          subtitle: Text(
+                              '${user.role.name} - ${user.phone ?? 'No phone'}'),
+                          trailing: PopupMenuButton<String>(
+                            onSelected: (value) {
+                              // ScaffoldMessenger.of(context).showSnackBar(
+                              //   SnackBar(content: Text('$value action not implemented yet')),
+                              // );
+                            },
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                  value: 'edit', child: Text('Edit')),
+                              const PopupMenuItem(
+                                  value: 'suspend', child: Text('Suspend')),
+                              const PopupMenuItem(
+                                  value: 'delete', child: Text('Delete')),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
           ),
         ],
       ),

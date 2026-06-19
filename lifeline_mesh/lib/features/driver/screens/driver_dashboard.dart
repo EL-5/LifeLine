@@ -1,17 +1,66 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../providers/driver_provider.dart';
 
-class DriverDashboard extends ConsumerWidget {
+class DriverDashboard extends ConsumerStatefulWidget {
   const DriverDashboard({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DriverDashboard> createState() => _DriverDashboardState();
+}
+
+class _DriverDashboardState extends ConsumerState<DriverDashboard> {
+  bool _isAvailable = false;
+  bool _isUpdatingAvailability = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAvailability();
+  }
+
+  Future<void> _loadAvailability() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+    final result = await Supabase.instance.client
+        .from('drivers')
+        .select('availability_status')
+        .eq('user_id', userId)
+        .maybeSingle();
+    if (mounted && result != null) {
+      setState(() => _isAvailable = result['availability_status'] as bool? ?? false);
+    }
+  }
+
+  Future<void> _toggleAvailability(bool value) async {
+    if (_isUpdatingAvailability) return;
+    setState(() => _isUpdatingAvailability = true);
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+      await Supabase.instance.client
+          .from('drivers')
+          .update({'availability_status': value}).eq('user_id', userId);
+      setState(() => _isAvailable = value);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to update: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUpdatingAvailability = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final availableEmergencies = ref.watch(availableEmergenciesProvider);
 
     return Scaffold(
@@ -19,7 +68,7 @@ class DriverDashboard extends ConsumerWidget {
         title: const Text('Driver'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.earbuds),
+            icon: const Icon(Icons.monetization_on),
             onPressed: () => context.push('/driver/earnings'),
           ),
         ],
@@ -32,16 +81,32 @@ class DriverDashboard extends ConsumerWidget {
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  const Icon(Icons.circle, color: AppColors.successGreen, size: 12),
-                  const SizedBox(width: 8),
-                  const Text('Available for emergencies',
-                      style: TextStyle(fontWeight: FontWeight.w500)),
-                  const Spacer(),
-                  Switch(
-                    value: true,
-                    onChanged: (_) {},
-                    activeColor: AppColors.successGreen,
+                  Icon(
+                    Icons.circle,
+                    color: _isAvailable
+                        ? AppColors.successGreen
+                        : AppColors.textSecondary,
+                    size: 12,
                   ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _isAvailable
+                        ? 'Available for emergencies'
+                        : 'Currently offline',
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  const Spacer(),
+                  _isUpdatingAvailability
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Switch(
+                          value: _isAvailable,
+                          onChanged: _toggleAvailability,
+                          activeColor: AppColors.successGreen,
+                        ),
                 ],
               ),
             ),
