@@ -6,6 +6,7 @@ import '../../../core/theme/text_styles.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../providers/auth_provider.dart';
+import '../../../providers/theme_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -69,14 +70,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: SingleChildScrollView(
-            child: SizedBox(
-              height: MediaQuery.of(context).size.height - MediaQuery.of(context).padding.top - MediaQuery.of(context).padding.bottom - 48,
-              child: Form(
-                key: _formKey,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: MediaQuery.of(context).size.height - MediaQuery.of(context).padding.top - MediaQuery.of(context).padding.bottom - 48,
+              ),
+              child: IntrinsicHeight(
+                child: Form(
+                  key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Spacer(flex: 2),
+                    Align(
+                      alignment: Alignment.topRight,
+                      child: IconButton(
+                        icon: Icon(
+                          Theme.of(context).brightness == Brightness.light 
+                              ? Icons.dark_mode 
+                              : Icons.light_mode,
+                        ),
+                        onPressed: () {
+                          ref.read(themeModeProvider.notifier).toggleTheme(context);
+                        },
+                      ),
+                    ),
+                    const Spacer(),
                     Container(
                       width: 64,
                       height: 64,
@@ -164,6 +181,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
 }

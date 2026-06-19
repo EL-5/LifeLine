@@ -6,6 +6,8 @@ import '../../../core/theme/text_styles.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/emergency_badge.dart';
 import '../../../providers/hospital_provider.dart';
+import '../../../providers/auth_provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class HospitalDashboard extends ConsumerWidget {
   const HospitalDashboard({super.key});
@@ -15,7 +17,18 @@ class HospitalDashboard extends ConsumerWidget {
     final emergencies = ref.watch(hospitalIncomingEmergenciesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Hospital Dashboard')),
+      appBar: AppBar(
+        title: const Text('Hospital Dashboard'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              ref.read(authProvider.notifier).logout();
+              context.go('/login');
+            },
+          ),
+        ],
+      ),
       body: Column(
         children: [
           // Stats header
@@ -143,7 +156,7 @@ class HospitalDashboard extends ConsumerWidget {
                           ),
                         ),
                       ),
-                    );
+                    ).animate().fadeIn(duration: 300.ms, delay: (index * 100).ms).slideY(begin: 0.1);
                   },
                 );
               },

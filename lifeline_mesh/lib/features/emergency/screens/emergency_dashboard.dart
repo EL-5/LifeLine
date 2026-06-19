@@ -7,6 +7,8 @@ import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/emergency_badge.dart';
 import '../../../providers/emergency_provider.dart';
+import '../../../providers/auth_provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class EmergencyDashboard extends ConsumerWidget {
   const EmergencyDashboard({super.key});
@@ -22,6 +24,13 @@ class EmergencyDashboard extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.history),
             onPressed: () => context.push('/patient/history'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              ref.read(authProvider.notifier).logout();
+              context.go('/login');
+            },
           ),
         ],
       ),
@@ -50,13 +59,13 @@ class _NoEmergencyView extends StatelessWidget {
             title: 'No Active Emergency',
             subtitle: 'Tap the SOS button when you need emergency assistance',
           ),
-        ),
+        ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1),
         Padding(
           padding: const EdgeInsets.all(24),
           child: _SOSButton(
             onPressed: () => context.push('/patient/sos'),
           ),
-        ),
+        ).animate().scale(delay: 200.ms, duration: 400.ms, curve: Curves.easeOutBack),
       ],
     );
   }
@@ -175,7 +184,7 @@ class _ActiveEmergencyView extends StatelessWidget {
                   ),
                   _infoRow(
                     Icons.local_hospital,
-                    'Hospital',
+                    'Hospital ID',
                     emergency.hospitalId ?? 'Assigning...',
                   ),
                   const SizedBox(height: 16),
@@ -210,11 +219,19 @@ class _ActiveEmergencyView extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 16, color: AppColors.textSecondary),
           const SizedBox(width: 8),
           Text('$label: ', style: const TextStyle(color: AppColors.textSecondary)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
+          Expanded(
+            child: Text(
+              value, 
+              style: const TextStyle(fontWeight: FontWeight.w500),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
       ),
     );

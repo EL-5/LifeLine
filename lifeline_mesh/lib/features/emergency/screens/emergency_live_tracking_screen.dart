@@ -9,6 +9,7 @@ import '../../../models/emergency_model.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class EmergencyLiveTrackingScreen extends ConsumerWidget {
   final String emergencyId;
@@ -155,8 +156,13 @@ class _TrackingContentState extends ConsumerState<_TrackingContent> {
                     children: [
                       const Icon(Icons.timeline, color: AppColors.trustBlue),
                       const SizedBox(width: 8),
-                      Text('Status Timeline', style: AppTextStyles.titleMedium),
-                      const Spacer(),
+                      Expanded(
+                        child: Text(
+                          'Status Timeline',
+                          style: AppTextStyles.titleMedium,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                       IconButton(
                         icon: Icon(
                           _voiceEnabled ? Icons.volume_up : Icons.volume_off,
@@ -205,7 +211,7 @@ class _TrackingContentState extends ConsumerState<_TrackingContent> {
                 ],
               ),
             ),
-          ),
+          ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1),
           const SizedBox(height: 16),
 
           // Live Google Map
@@ -226,7 +232,7 @@ class _TrackingContentState extends ConsumerState<_TrackingContent> {
                 mapToolbarEnabled: false,
               ),
             ),
-          ),
+          ).animate().fadeIn(duration: 400.ms, delay: 100.ms).scale(begin: const Offset(0.95, 0.95)),
           const SizedBox(height: 16),
 
           // Emergency Details
@@ -280,7 +286,7 @@ class _TrackingContentState extends ConsumerState<_TrackingContent> {
                 ],
               ),
             ),
-          ),
+          ).animate().fadeIn(duration: 400.ms, delay: 200.ms).slideY(begin: 0.1),
         ],
       ),
     );

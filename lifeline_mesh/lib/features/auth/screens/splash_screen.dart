@@ -4,6 +4,8 @@ import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../providers/auth_provider.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:go_router/go_router.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -21,8 +23,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
   Future<void> _initialize() async {
     await Future.delayed(const Duration(seconds: 2));
+    const storage = FlutterSecureStorage();
+    final hasSeenOnboarding = await storage.read(key: 'has_seen_onboarding');
+
     if (mounted) {
-      ref.read(authProvider.notifier).checkAuthStatus();
+      if (hasSeenOnboarding != 'true') {
+        context.go('/onboarding');
+      } else {
+        ref.read(authProvider.notifier).checkAuthStatus();
+      }
     }
   }
 

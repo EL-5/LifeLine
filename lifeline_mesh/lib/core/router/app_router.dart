@@ -6,6 +6,7 @@ import '../../models/enums/user_role.dart';
 
 // Screen imports
 import '../../features/auth/screens/splash_screen.dart';
+import '../../features/auth/screens/onboarding_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/otp_screen.dart';
 import '../../features/auth/screens/role_selection_screen.dart';
@@ -42,7 +43,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authProvider);
       final isLoggedIn = authState.status == AuthStatus.authenticated;
       final isInitialOrLoading = authState.status == AuthStatus.initial || authState.status == AuthStatus.loading;
-      final isOnAuthScreen = state.matchedLocation.startsWith('/auth');
+      final isOnAuthScreen = state.matchedLocation.startsWith('/auth') || state.matchedLocation == '/onboarding';
       final isOnSplash = state.matchedLocation == '/splash';
 
       if (isOnSplash) {
@@ -63,6 +64,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/splash',
         builder: (context, state) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: '/onboarding',
+        builder: (context, state) => const OnboardingScreen(),
       ),
       GoRoute(
         path: '/auth/login',

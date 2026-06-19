@@ -7,6 +7,8 @@ import '../../../core/theme/text_styles.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../providers/driver_provider.dart';
+import '../../../providers/auth_provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class DriverDashboard extends ConsumerStatefulWidget {
   const DriverDashboard({super.key});
@@ -70,6 +72,13 @@ class _DriverDashboardState extends ConsumerState<DriverDashboard> {
           IconButton(
             icon: const Icon(Icons.monetization_on),
             onPressed: () => context.push('/driver/earnings'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              ref.read(authProvider.notifier).logout();
+              context.go('/login');
+            },
           ),
         ],
       ),
@@ -199,7 +208,7 @@ class _DriverDashboardState extends ConsumerState<DriverDashboard> {
                           ],
                         ),
                       ),
-                    );
+                    ).animate().fadeIn(duration: 300.ms, delay: (index * 100).ms).slideX(begin: 0.1);
                   },
                 );
               },
