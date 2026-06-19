@@ -144,7 +144,7 @@ class _SymptomSelectionScreenState
         context.pushReplacement('/patient/track/$emergencyId');
       }
     } catch (e) {
-      _showError('Network error. Please check your connection and try again.');
+      _showError('Error: $e');
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }

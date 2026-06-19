@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/services/auth_service.dart';
 import '../models/user_model.dart';
 
@@ -114,6 +115,42 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> logout() async {
     await _authService.logout();
     state = const AuthState(status: AuthStatus.unauthenticated);
+  }
+
+  Future<void> devQuickLogin(String email, String roleStr) async {
+    state = state.copyWith(status: AuthStatus.loading);
+    try {
+      final client = Supabase.instance.client;
+      // Try sign in
+      try {
+        await client.auth.signInWithPassword(email: email, password: 'password123');
+      } catch (e) {
+        // If fails, sign up
+        final res = await client.auth.signUp(email: email, password: 'password123');
+        if (res.user != null) {
+          // ensure profile exists
+          try {
+            await client.from('users').insert({
+              'id': res.user!.id,
+              'email': email,
+              'role': roleStr,
+              'full_name': 'Test ${roleStr.toUpperCase()}',
+              'verification_status': 'verified',
+            });
+          } catch (_) {} // Might already exist
+        }
+      }
+      
+      // Fetch user to update state
+      final user = await _authService.getCurrentUser();
+      if (user != null) {
+        state = state.copyWith(status: AuthStatus.authenticated, user: user);
+      } else {
+        state = state.copyWith(status: AuthStatus.error, error: 'Failed to load user profile');
+      }
+    } catch (e) {
+      state = state.copyWith(status: AuthStatus.error, error: e.toString());
+    }
   }
 
   void clearError() {
