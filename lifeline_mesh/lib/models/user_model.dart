@@ -16,7 +16,7 @@ class UserModel {
 
   UserModel({
     required this.id,
-    this.role = UserRole.patient,
+    this.role = UserRole.user,
     this.fullName,
     this.phone,
     this.email,
@@ -33,7 +33,7 @@ class UserModel {
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['id'] as String,
-      role: UserRole.fromString(json['role'] as String? ?? 'patient'),
+      role: UserRole.fromString(json['role'] as String? ?? 'user'),
       fullName: json['full_name'] as String?,
       phone: json['phone'] as String?,
       email: json['email'] as String?,

@@ -15,7 +15,7 @@ class RoleSelectionScreen extends ConsumerWidget {
 
     final roles = [
       _RoleOption(
-        UserRole.patient,
+        UserRole.user,
         Icons.person,
         'I need emergency help',
         AppColors.emergencyRed,
@@ -101,7 +101,7 @@ class RoleSelectionScreen extends ConsumerWidget {
       case UserRole.moderator:
         context.go('/admin/dashboard');
       default:
-        context.go('/patient/dashboard');
+        context.go('/user/dashboard');
     }
   }
 }

@@ -57,10 +57,10 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     ref.listen<AuthState>(authProvider, (prev, next) {
       if (next.status == AuthStatus.authenticated) {
         final user = next.user;
-        if (user != null && user.role.value == 'patient' && user.fullName == null) {
+        if (user != null && user.role.value == 'user' && user.fullName == null) {
           context.push('/auth/profile');
         } else {
-          _navigateToDashboard(user?.role.value ?? 'patient');
+          _navigateToDashboard(user?.role.value ?? 'user');
         }
       }
     });
@@ -146,7 +146,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       case 'moderator':
         context.go('/admin/dashboard');
       default:
-        context.go('/patient/dashboard');
+        context.go('/user/dashboard');
     }
   }
 }

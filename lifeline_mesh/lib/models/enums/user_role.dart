@@ -1,5 +1,5 @@
 enum UserRole {
-  patient,
+  user,
   family,
   communitySupporter,
   driver,
@@ -9,8 +9,8 @@ enum UserRole {
 
   String get value {
     switch (this) {
-      case UserRole.patient:
-        return 'patient';
+      case UserRole.user:
+        return 'user';
       case UserRole.family:
         return 'family';
       case UserRole.communitySupporter:
@@ -28,8 +28,9 @@ enum UserRole {
 
   static UserRole fromString(String value) {
     switch (value) {
-      case 'patient':
-        return UserRole.patient;
+      case 'user':
+      case 'patient': // fallback for old data
+        return UserRole.user;
       case 'family':
         return UserRole.family;
       case 'community_supporter':
@@ -43,14 +44,14 @@ enum UserRole {
       case 'admin':
         return UserRole.admin;
       default:
-        return UserRole.patient;
+        return UserRole.user;
     }
   }
 
   String get displayName {
     switch (this) {
-      case UserRole.patient:
-        return 'Patient';
+      case UserRole.user:
+        return 'User';
       case UserRole.family:
         return 'Family Member';
       case UserRole.communitySupporter:

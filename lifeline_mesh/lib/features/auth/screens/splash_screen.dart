@@ -41,9 +41,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       } else {
         final authState = ref.read(authProvider);
         if (authState.status == AuthStatus.authenticated) {
-          final role = authState.user?.role ?? UserRole.patient;
+          final role = authState.user?.role ?? UserRole.user;
           // Determine dashboard route manually here
-          String route = '/patient/dashboard';
+          String route = '/user/dashboard';
           if (role == UserRole.driver) route = '/driver/dashboard';
           if (role == UserRole.hospital) route = '/hospital/dashboard';
           if (role == UserRole.admin || role == UserRole.moderator) route = '/admin/dashboard';

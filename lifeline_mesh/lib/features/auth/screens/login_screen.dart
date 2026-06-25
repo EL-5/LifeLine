@@ -151,9 +151,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       children: [
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: () => ref.read(authProvider.notifier).devQuickLogin('patient4@test.com', 'patient'),
+                            onPressed: () => ref.read(authProvider.notifier).devQuickLogin('user4@test.com', 'user'),
                             style: ElevatedButton.styleFrom(backgroundColor: AppColors.emergencyRed, foregroundColor: Colors.white),
-                            child: const Text('Patient'),
+                            child: const Text('User'),
                           ),
                         ),
                         const SizedBox(width: 8),

@@ -11,7 +11,7 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/otp_screen.dart';
 import '../../features/auth/screens/role_selection_screen.dart';
 import '../../features/auth/screens/profile_setup_screen.dart';
-import '../../features/emergency/screens/emergency_dashboard.dart';
+import '../../features/emergency/screens/user_dashboard.dart';
 import '../../features/emergency/screens/sos_trigger_screen.dart';
 import '../../features/emergency/screens/symptom_selection_screen.dart';
 import '../../features/emergency/screens/emergency_live_tracking_screen.dart';
@@ -23,6 +23,8 @@ import '../../features/driver/screens/driver_dashboard.dart';
 import '../../features/driver/screens/incoming_request_screen.dart';
 import '../../features/driver/screens/driver_navigation_screen.dart';
 import '../../features/driver/screens/driver_earnings_screen.dart';
+import '../../features/driver/screens/driver_application_screen.dart';
+import '../../features/driver/screens/driver_application_pending_screen.dart';
 import '../../features/hospital/screens/hospital_dashboard.dart';
 import '../../features/hospital/screens/emergency_detail_screen.dart';
 import '../../features/payments/screens/wallet_screen.dart';
@@ -54,7 +56,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         return '/auth/login';
       }
       if (isLoggedIn && isOnAuthScreen) {
-        final role = authState.user?.role ?? UserRole.patient;
+        final role = authState.user?.role ?? UserRole.user;
         return _getDefaultRouteForRole(role);
       }
       return null;
@@ -84,37 +86,47 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/auth/profile',
         builder: (context, state) => const ProfileSetupScreen(),
       ),
-      // Patient routes
+      // User routes
       GoRoute(
-        path: '/patient/dashboard',
-        builder: (context, state) => const EmergencyDashboard(),
+        path: '/user/dashboard',
+        builder: (context, state) => const UserDashboard(),
       ),
       GoRoute(
-        path: '/patient/sos',
+        path: '/user/sos',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const SosTriggerScreen(),
       ),
       GoRoute(
-        path: '/patient/sos/symptoms',
+        path: '/user/sos/symptoms',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const SymptomSelectionScreen(),
       ),
       GoRoute(
-        path: '/patient/track/:id',
+        path: '/user/track/:id',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => EmergencyLiveTrackingScreen(
           emergencyId: state.pathParameters['id']!,
         ),
       ),
       GoRoute(
-        path: '/patient/history',
+        path: '/user/history',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const EmergencyHistoryScreen(),
       ),
       GoRoute(
-        path: '/patient/family',
+        path: '/user/family',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const FamilyManagementScreen(),
+      ),
+      GoRoute(
+        path: '/user/apply_driver',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const DriverApplicationScreen(),
+      ),
+      GoRoute(
+        path: '/user/apply_driver/pending',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const DriverApplicationPendingScreen(),
       ),
       // Community routes
       GoRoute(
@@ -216,10 +228,10 @@ final routerProvider = Provider<GoRouter>((ref) {
 
 String _getDefaultRouteForRole(UserRole role) {
   switch (role) {
-    case UserRole.patient:
+    case UserRole.user:
     case UserRole.family:
     case UserRole.communitySupporter:
-      return '/patient/dashboard';
+      return '/user/dashboard';
     case UserRole.driver:
       return '/driver/dashboard';
     case UserRole.hospital:

@@ -54,7 +54,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
       case UserRole.moderator:
         context.go('/admin/dashboard');
       default:
-        context.go('/patient/dashboard');
+        context.go('/user/dashboard');
     }
   }
 
