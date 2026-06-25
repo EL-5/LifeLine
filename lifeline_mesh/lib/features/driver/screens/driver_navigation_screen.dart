@@ -2,21 +2,61 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../providers/emergency_provider.dart';
+import '../../../models/enums/emergency_status.dart';
 
-class DriverNavigationScreen extends ConsumerWidget {
+class DriverNavigationScreen extends ConsumerStatefulWidget {
   final String emergencyId;
 
   const DriverNavigationScreen({super.key, required this.emergencyId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final emergencyAsync = ref.watch(emergencyDetailProvider(emergencyId));
+  ConsumerState<DriverNavigationScreen> createState() => _DriverNavigationScreenState();
+}
+
+class _DriverNavigationScreenState extends ConsumerState<DriverNavigationScreen> {
+  bool _isUpdating = false;
+
+  Future<void> _updateStatus(String newStatusStr) async {
+    setState(() => _isUpdating = true);
+    try {
+      await Supabase.instance.client
+          .from('emergencies')
+          .update({'status': newStatusStr})
+          .eq('id', widget.emergencyId);
+      
+      if (mounted) {
+        if (newStatusStr == 'completed') {
+           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Emergency Mission Completed!')));
+           context.go('/driver/dashboard');
+        }
+      }
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e')));
+    } finally {
+      if (mounted) setState(() => _isUpdating = false);
+    }
+  }
+
+  Future<void> _launchDirections(double lat, double lng) async {
+    final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch maps.')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final emergencyAsync = ref.watch(emergencyDetailProvider(widget.emergencyId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Navigation')),
+      appBar: AppBar(title: const Text('Live Navigation')),
       body: emergencyAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -42,7 +82,7 @@ class DriverNavigationScreen extends ConsumerWidget {
                       markerId: const MarkerId('emergency'),
                       position: emergencyLocation,
                       icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-                      infoWindow: const InfoWindow(title: 'Patient Location'),
+                      infoWindow: const InfoWindow(title: 'Target Location'),
                     )
                   },
                   myLocationEnabled: true,
@@ -50,83 +90,108 @@ class DriverNavigationScreen extends ConsumerWidget {
                 ),
               ),
               // Bottom controls
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.location_on, color: AppColors.emergencyRed),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                child: SafeArea(
+                  child: Column(
+                    children: [
+                      Row(
                         children: [
-                          const Text('Patient Location', style: TextStyle(fontWeight: FontWeight.w600)),
-                          Text(emergency.location['address'] ?? 'Emergency Site', style: const TextStyle(color: AppColors.textSecondary)),
+                          const Icon(Icons.location_on, color: AppColors.emergencyRed),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Target Destination', style: TextStyle(fontWeight: FontWeight.w600)),
+                                Text(emergency.location['address'] ?? 'Emergency Site', style: const TextStyle(color: AppColors.textSecondary)),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            emergency.status.name.toUpperCase(),
+                            style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.trustBlue, fontSize: 12),
+                          ),
                         ],
                       ),
-                    ),
-                    const Text('Navigating...', style: TextStyle(fontWeight: FontWeight.w600)),
-                  ],
+                      const SizedBox(height: 16),
+                      if (_isUpdating)
+                        const Center(child: CircularProgressIndicator())
+                      else
+                        _buildActionButtons(emergency.status, emergencyLocation),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppButton(
-                        label: 'Mark as Arrived',
-                        onPressed: () => context.pop(),
-                        type: ButtonType.success,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppButton(
-                        label: 'Confirm Pickup',
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Patient picked up')),
-                          );
-                        },
-                        type: ButtonType.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: AppButton(
-                        label: 'Confirm Dropoff',
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Patient delivered to hospital')),
-                          );
-                        },
-                        type: ButtonType.success,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+              ),
             ],
           );
         },
       ),
+    );
+  }
+
+  Widget _buildActionButtons(EmergencyStatus status, LatLng location) {
+    if (status == EmergencyStatus.completed) {
+      return AppButton(
+        label: 'Mission Completed. Return to Dashboard',
+        onPressed: () => context.go('/driver/dashboard'),
+        type: ButtonType.primary,
+      );
+    }
+
+    if (status == EmergencyStatus.enRouteHospital || status == EmergencyStatus.arrivedHospital) {
+      return Row(
+        children: [
+          Expanded(
+            child: AppButton(
+              label: 'Directions',
+              icon: Icons.directions,
+              onPressed: () => _launchDirections(location.latitude, location.longitude),
+              type: ButtonType.secondary,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: AppButton(
+              label: status == EmergencyStatus.arrivedHospital ? 'Complete Mission' : 'Confirm Dropoff',
+              onPressed: () => _updateStatus(status == EmergencyStatus.arrivedHospital ? 'completed' : 'arrived_hospital'),
+              type: ButtonType.success,
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Default: Driver is assigned or arrived at patient
+    return Row(
+      children: [
+        Expanded(
+          child: AppButton(
+            label: 'Directions',
+            icon: Icons.directions,
+            onPressed: () => _launchDirections(location.latitude, location.longitude),
+            type: ButtonType.secondary,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: AppButton(
+            label: status == EmergencyStatus.driverArrived ? 'Confirm Pickup' : 'Mark Arrived',
+            onPressed: () => _updateStatus(status == EmergencyStatus.driverArrived ? 'en_route_hospital' : 'driver_arrived'),
+            type: ButtonType.primary,
+          ),
+        ),
+      ],
     );
   }
 }

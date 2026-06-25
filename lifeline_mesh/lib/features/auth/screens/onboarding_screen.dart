@@ -19,22 +19,34 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final List<Map<String, dynamic>> _pages = [
     {
-      'title': 'Emergency SOS',
-      'subtitle': 'Trigger an SOS in seconds to get immediate help.',
+      'title': '1. Tap for Help',
+      'subtitle': 'In any medical emergency, just tap the SOS button. We\'ll handle the rest.',
       'icon': Icons.warning_rounded,
       'color': AppColors.emergencyRed,
     },
     {
-      'title': 'Instant Dispatch',
-      'subtitle': 'Nearby ambulance drivers are automatically routed to you.',
+      'title': '2. Fast Ambulances',
+      'subtitle': 'The closest ambulance drivers receive your exact location and are instantly routed to you.',
       'icon': Icons.local_shipping_rounded,
       'color': AppColors.trustBlue,
     },
     {
-      'title': 'Hospital Prep',
-      'subtitle': 'Hospitals are notified with your details before you arrive.',
+      'title': '3. Hospitals Prepared',
+      'subtitle': 'We automatically send your critical medical details to the hospital before you even arrive.',
       'icon': Icons.local_hospital_rounded,
       'color': AppColors.successGreen,
+    },
+    {
+      'title': '4. Family Wallets',
+      'subtitle': 'Add your family members and share a joint emergency fund so loved ones are always protected.',
+      'icon': Icons.family_restroom_rounded,
+      'color': Colors.orange,
+    },
+    {
+      'title': '5. Community Backing',
+      'subtitle': 'Join campaigns to help fund medical care for your neighbors. Together, we save lives.',
+      'icon': Icons.volunteer_activism_rounded,
+      'color': Colors.purple,
     },
   ];
 

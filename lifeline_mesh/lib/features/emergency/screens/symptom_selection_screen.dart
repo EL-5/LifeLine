@@ -200,7 +200,7 @@ class _SymptomSelectionScreenState
                         decoration: BoxDecoration(
                           color: isSelected
                               ? cat.color.withValues(alpha: 0.15)
-                              : Colors.white,
+                              : Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                             color: isSelected ? cat.color : AppColors.divider,
@@ -245,7 +245,7 @@ class _SymptomSelectionScreenState
                   decoration: InputDecoration(
                     hintText: 'Describe what happened (optional)',
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: Theme.of(context).cardColor,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),

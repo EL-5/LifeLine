@@ -6,11 +6,57 @@ import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/emergency_badge.dart';
 import '../../../providers/emergency_provider.dart';
 
-class EmergencyHistoryScreen extends ConsumerWidget {
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class EmergencyHistoryScreen extends ConsumerStatefulWidget {
   const EmergencyHistoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<EmergencyHistoryScreen> createState() => _EmergencyHistoryScreenState();
+}
+
+class _EmergencyHistoryScreenState extends ConsumerState<EmergencyHistoryScreen> {
+  Future<void> _deleteEmergency(String id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Emergency'),
+        content: const Text('Are you sure you want to completely delete this emergency? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.emergencyRed),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await Supabase.instance.client.from('emergencies').delete().eq('id', id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Emergency deleted successfully')),
+        );
+        ref.invalidate(emergencyListProvider);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final emergencies = ref.watch(emergencyListProvider);
 
     return Scaffold(
@@ -52,10 +98,11 @@ class EmergencyHistoryScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 4),
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
                           SeverityBadge(severity: emergency.severity),
-                          const SizedBox(width: 8),
                           StatusBadge(status: emergency.status),
                         ],
                       ),
@@ -69,7 +116,16 @@ class EmergencyHistoryScreen extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  trailing: const Icon(Icons.chevron_right),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: AppColors.emergencyRed),
+                        onPressed: () => _deleteEmergency(emergency.id),
+                      ),
+                      const Icon(Icons.chevron_right),
+                    ],
+                  ),
                   onTap: () {
                     // TODO: Navigate to emergency detail
                   },

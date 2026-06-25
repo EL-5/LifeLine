@@ -47,8 +47,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isOnSplash = state.matchedLocation == '/splash';
 
       if (isOnSplash) {
-        if (isInitialOrLoading) return null;
-        return isLoggedIn ? _getDefaultRouteForRole(authState.user?.role ?? UserRole.patient) : '/auth/login';
+        return null;
       }
 
       if (!isLoggedIn && !isOnAuthScreen) {

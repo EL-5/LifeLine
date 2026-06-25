@@ -65,7 +65,7 @@ class AppButton extends StatelessWidget {
           foregroundColor: foregroundColor,
           disabledBackgroundColor: backgroundColor.withValues(alpha: 0.5),
           disabledForegroundColor: foregroundColor.withValues(alpha: 0.5),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: type == ButtonType.secondary
@@ -90,12 +90,16 @@ class AppButton extends StatelessWidget {
                     Icon(icon, size: 20),
                     const SizedBox(width: 8),
                   ],
-                  Text(
-                    label,
-                    style: AppTextStyles.labelLarge.copyWith(
-                      color: isDisabled
-                          ? foregroundColor.withValues(alpha: 0.5)
-                          : foregroundColor,
+                  Flexible(
+                    child: Text(
+                      label,
+                      style: AppTextStyles.labelLarge.copyWith(
+                        color: isDisabled
+                            ? foregroundColor.withValues(alpha: 0.5)
+                            : foregroundColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ),
                 ],

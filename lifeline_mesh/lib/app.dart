@@ -16,9 +16,6 @@ class _LifelineMeshAppState extends ConsumerState<LifelineMeshApp> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(authProvider.notifier).checkAuthStatus();
-    });
   }
 
   @override

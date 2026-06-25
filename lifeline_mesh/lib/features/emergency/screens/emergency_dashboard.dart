@@ -9,17 +9,25 @@ import '../../../core/widgets/emergency_badge.dart';
 import '../../../providers/emergency_provider.dart';
 import '../../../providers/auth_provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'community_funding_view.dart';
 
-class EmergencyDashboard extends ConsumerWidget {
+class EmergencyDashboard extends ConsumerStatefulWidget {
   const EmergencyDashboard({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<EmergencyDashboard> createState() => _EmergencyDashboardState();
+}
+
+class _EmergencyDashboardState extends ConsumerState<EmergencyDashboard> {
+  int _currentIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
     final activeEmergency = ref.watch(activeEmergencyProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lifeline Mesh'),
+        title: Text(_currentIndex == 0 ? 'Lifeline Mesh' : 'Community Support'),
         actions: [
           IconButton(
             icon: const Icon(Icons.history),
@@ -34,15 +42,32 @@ class EmergencyDashboard extends ConsumerWidget {
           ),
         ],
       ),
-      body: activeEmergency.when(
-        data: (emergency) {
-          if (emergency != null) {
-            return _ActiveEmergencyView(emergency: emergency);
-          }
-          return _NoEmergencyView();
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => _NoEmergencyView(),
+      body: _currentIndex == 0
+          ? activeEmergency.when(
+              data: (emergency) {
+                if (emergency != null) {
+                  return _ActiveEmergencyView(emergency: emergency);
+                }
+                return _NoEmergencyView();
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (_, __) => _NoEmergencyView(),
+            )
+          : const CommunityFundingView(),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        selectedItemColor: AppColors.trustBlue,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.emergency),
+            label: 'My SOS',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.volunteer_activism),
+            label: 'Community',
+          ),
+        ],
       ),
     );
   }

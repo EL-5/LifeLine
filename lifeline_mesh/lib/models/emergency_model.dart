@@ -87,4 +87,6 @@ class EmergencyModel {
       targetAmount > 0 ? (raisedAmount / targetAmount).clamp(0.0, 1.0) : 0.0;
 
   bool get isActive => status.isActive;
+
+  String get note => symptoms.isNotEmpty ? symptoms.join(', ') : 'No additional details provided';
 }
