@@ -30,7 +30,7 @@ const NAV2: { icon: string; label: NavKey }[] = [
 
 /* ========= PAGE TITLES ========= */
 const PAGE_META: Record<NavKey, { title: string; subtitle: string }> = {
-  'Dashboard': { title: 'Welcome back, Admin', subtitle: 'You have 3 active emergencies.' },
+  'Dashboard': { title: 'Welcome back, Dr. Mensah', subtitle: 'You have 3 active emergencies.' },
   'Incidents': { title: 'All Incidents', subtitle: 'Full history of emergency incidents' },
   'Patients': { title: 'Patient Registry', subtitle: 'All registered patients in the system' },
   'Vitals Monitor': { title: 'Vitals Monitor', subtitle: 'Live vitals for all inbound patients' },
@@ -246,9 +246,9 @@ const Dashboard: React.FC = () => {
 
         <div className="sidebar-footer">
           <div className="sidebar-user">
-            <div className="sidebar-avatar">AD</div>
+            <div className="sidebar-avatar">DM</div>
             <div>
-              <div className="sidebar-user-name">Admin</div>
+              <div className="sidebar-user-name">Dr. Mensah</div>
               <div className="sidebar-user-role">Head of Emergency</div>
             </div>
           </div>

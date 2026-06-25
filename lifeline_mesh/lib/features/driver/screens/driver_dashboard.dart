@@ -11,6 +11,7 @@ import '../../../core/widgets/app_button.dart';
 import '../../../providers/driver_provider.dart';
 import '../../../providers/auth_provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class DriverDashboard extends ConsumerStatefulWidget {
   const DriverDashboard({super.key});
@@ -27,12 +28,21 @@ class _DriverDashboardState extends ConsumerState<DriverDashboard> {
   final Completer<GoogleMapController> _mapController = Completer();
   LatLng? _currentPosition;
   Set<Marker> _markers = {};
+  
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  bool _isPlayingAlarm = false;
 
   @override
   void initState() {
     super.initState();
     _loadAvailability();
     _determinePosition();
+  }
+
+  @override
+  void dispose() {
+    _audioPlayer.dispose();
+    super.dispose();
   }
 
   Future<void> _loadAvailability() async {
@@ -138,6 +148,20 @@ class _DriverDashboardState extends ConsumerState<DriverDashboard> {
             infoWindow: const InfoWindow(title: 'My Location'),
           ),
         );
+    }
+    
+    // Play siren if we are available and there is an active emergency
+    if (_isAvailable && emergencies.isNotEmpty) {
+      if (!_isPlayingAlarm) {
+        _isPlayingAlarm = true;
+        _audioPlayer.setReleaseMode(ReleaseMode.loop);
+        _audioPlayer.play(UrlSource('https://actions.google.com/sounds/v1/alarms/bugle_tune.ogg'));
+      }
+    } else {
+      if (_isPlayingAlarm) {
+        _isPlayingAlarm = false;
+        _audioPlayer.stop();
+      }
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {

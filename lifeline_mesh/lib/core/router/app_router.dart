@@ -30,6 +30,7 @@ import '../../features/hospital/screens/emergency_detail_screen.dart';
 import '../../features/payments/screens/wallet_screen.dart';
 import '../../features/payments/screens/transaction_history_screen.dart';
 import '../../features/admin/screens/admin_dashboard.dart';
+import '../../features/admin/screens/driver_approvals_screen.dart';
 import '../../features/admin/screens/analytics_screen.dart';
 import '../../features/admin/screens/user_management_screen.dart';
 import '../../features/admin/screens/fraud_monitoring_screen.dart';
@@ -195,6 +196,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/admin/dashboard',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const AdminDashboard(),
+      ),
+      GoRoute(
+        path: '/admin/driver_approvals',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const DriverApprovalsScreen(),
       ),
       GoRoute(
         path: '/admin/analytics',

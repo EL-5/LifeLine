@@ -157,8 +157,10 @@ class CommunityFundingView extends ConsumerWidget {
               style: TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              alignment: WrapAlignment.center,
               children: [
                 _DonationChip(amount: 50, emergencyId: emergencyId),
                 _DonationChip(amount: 100, emergencyId: emergencyId),

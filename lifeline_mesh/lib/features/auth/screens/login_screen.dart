@@ -151,7 +151,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       children: [
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: () => ref.read(authProvider.notifier).devQuickLogin('user4@test.com', 'user'),
+                            onPressed: () => ref.read(authProvider.notifier).devQuickLogin('user4@test.com', 'patient'),
                             style: ElevatedButton.styleFrom(backgroundColor: AppColors.emergencyRed, foregroundColor: Colors.white),
                             child: const Text('User'),
                           ),
@@ -164,12 +164,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             child: const Text('Driver'),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
                         Expanded(
                           child: ElevatedButton(
                             onPressed: () => ref.read(authProvider.notifier).devQuickLogin('hospital4@test.com', 'hospital'),
                             style: ElevatedButton.styleFrom(backgroundColor: AppColors.successGreen, foregroundColor: Colors.white),
                             child: const Text('Hospital'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => ref.read(authProvider.notifier).devQuickLogin('admin4@test.com', 'admin'),
+                            style: ElevatedButton.styleFrom(backgroundColor: AppColors.warningAmber, foregroundColor: Colors.white),
+                            child: const Text('Admin'),
                           ),
                         ),
                       ],

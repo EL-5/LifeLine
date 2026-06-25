@@ -38,3 +38,5 @@ final driverEarningsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) 
       
   return List<Map<String, dynamic>>.from(data);
 });
+
+final hasAppliedToDriveProvider = StateProvider<bool>((ref) => false);

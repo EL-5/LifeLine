@@ -116,6 +116,18 @@ class AdminDashboard extends ConsumerWidget {
                 subtitle: 'Manage ${stats.totalUsers} users, roles, and permissions',
                 onTap: () => context.push('/admin/users'),
               ),
+              Consumer(
+                builder: (context, ref, child) {
+                  final pendingAsync = ref.watch(pendingDriversProvider);
+                  final count = pendingAsync.asData?.value.length ?? 0;
+                  return _ActionCard(
+                    icon: Icons.drive_eta,
+                    title: 'Driver Approvals',
+                    subtitle: count > 0 ? '$count applications pending review' : 'No pending applications',
+                    onTap: () => context.push('/admin/driver_approvals'),
+                  );
+                },
+              ),
               _ActionCard(
                 icon: Icons.warning_amber,
                 title: 'Fraud Monitoring',

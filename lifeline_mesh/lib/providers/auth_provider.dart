@@ -121,24 +121,31 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(status: AuthStatus.loading);
     try {
       final client = Supabase.instance.client;
+      User? authUser;
+      
       // Try sign in
       try {
-        await client.auth.signInWithPassword(email: email, password: 'password123');
+        final res = await client.auth.signInWithPassword(email: email, password: 'password123');
+        authUser = res.user;
       } catch (e) {
         // If fails, sign up
         final res = await client.auth.signUp(email: email, password: 'password123');
-        if (res.user != null) {
-          // ensure profile exists
-          try {
-            await client.from('users').insert({
-              'id': res.user!.id,
-              'email': email,
-              'role': roleStr,
-              'full_name': 'Test ${roleStr.toUpperCase()}',
-              'verification_status': 'verified',
-            });
-          } catch (_) {} // Might already exist
-        }
+        authUser = res.user;
+      }
+      
+      if (authUser != null) {
+        // ensure profile exists (upserting safely)
+        try {
+          await client.from('users').upsert({
+            'id': authUser.id,
+            'email': email,
+            'role': roleStr,
+            'full_name': 'Test ${roleStr.toUpperCase()}',
+            'verification_status': 'verified',
+          });
+        } catch (e) {
+          print("UPSERT ERROR in devQuickLogin: $e");
+        } 
       }
       
       // Fetch user to update state

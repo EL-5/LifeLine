@@ -3,16 +3,19 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/widgets/app_button.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/widgets/app_text_field.dart';
+import '../../../providers/driver_provider.dart';
+import '../../../core/services/supabase_service.dart';
 
-class DriverApplicationScreen extends StatefulWidget {
+class DriverApplicationScreen extends ConsumerStatefulWidget {
   const DriverApplicationScreen({super.key});
 
   @override
-  State<DriverApplicationScreen> createState() => _DriverApplicationScreenState();
+  ConsumerState<DriverApplicationScreen> createState() => _DriverApplicationScreenState();
 }
 
-class _DriverApplicationScreenState extends State<DriverApplicationScreen> {
+class _DriverApplicationScreenState extends ConsumerState<DriverApplicationScreen> {
   int _currentStep = 0;
   final _formKey = GlobalKey<FormState>();
 
@@ -38,11 +41,30 @@ class _DriverApplicationScreenState extends State<DriverApplicationScreen> {
     super.dispose();
   }
 
-  void _submitApplication() {
+  Future<void> _submitApplication() async {
     if (_formKey.currentState!.validate() && _backgroundCheckConsent && _termsAgreed) {
-      // Here we would submit the data to the backend via a provider
-      // For now, we simulate success and move to the pending screen
-      context.go('/user/apply_driver/pending');
+      try {
+        final client = ref.read(supabaseServiceProvider).client;
+        final userId = client.auth.currentUser?.id;
+        if (userId != null) {
+          await client.from('drivers').upsert({
+            'user_id': userId,
+            'vehicle_type': '${_yearController.text} ${_makeController.text} ${_modelController.text}',
+            'vehicle_registration': '${_plateController.text} (License: ${_licenseNumberController.text})',
+            'verification_status': 'pending',
+          });
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to submit application: $e')));
+        }
+        return;
+      }
+
+      ref.read(hasAppliedToDriveProvider.notifier).state = true;
+      if (context.mounted) {
+        context.go('/user/apply_driver/pending');
+      }
     } else if (!_backgroundCheckConsent || !_termsAgreed) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please agree to background check and terms.')),
@@ -52,10 +74,21 @@ class _DriverApplicationScreenState extends State<DriverApplicationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Apply to Drive'),
+    return Theme(
+      data: ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: const Color(0xFF0D1117),
+        colorScheme: const ColorScheme.dark(
+          primary: AppColors.trustBlue,
+          surface: Color(0xFF161B22),
+          onSurface: Colors.white,
+        ),
       ),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Apply to Drive', style: TextStyle(color: Colors.white)),
+          backgroundColor: Colors.transparent,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
       body: Form(
         key: _formKey,
         child: Stepper(
@@ -208,6 +241,7 @@ class _DriverApplicationScreenState extends State<DriverApplicationScreen> {
           ],
         ),
       ),
+    ),
     );
   }
 }
@@ -231,7 +265,7 @@ class _UploadCard extends StatelessWidget {
         children: [
           const Icon(Icons.cloud_upload_outlined, color: AppColors.trustBlue),
           const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary), textAlign: TextAlign.center),
+          Text(label, style: const TextStyle(fontSize: 12, color: Colors.white70), textAlign: TextAlign.center),
         ],
       ),
     );

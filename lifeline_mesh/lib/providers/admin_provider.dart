@@ -109,3 +109,39 @@ final auditLogsProvider =
     return [];
   }
 });
+
+// ─── Driver Approvals ───────────────────────────────────────────────────────
+
+final pendingDriversProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final supabase = ref.read(supabaseServiceProvider);
+  try {
+    final data = await supabase.client
+        .from('drivers')
+        .select('*, users(full_name, email, phone)')
+        .eq('verification_status', 'pending')
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(data);
+  } catch (e) {
+    return [];
+  }
+});
+
+class AdminController {
+  final Ref ref;
+  AdminController(this.ref);
+
+  Future<void> approveDriver(String driverId, String userId) async {
+    final client = ref.read(supabaseServiceProvider).client;
+    await client.from('drivers').update({'verification_status': 'verified'}).eq('id', driverId);
+    await client.from('users').update({'role': 'driver'}).eq('id', userId);
+    ref.invalidate(pendingDriversProvider);
+  }
+
+  Future<void> rejectDriver(String driverId) async {
+    final client = ref.read(supabaseServiceProvider).client;
+    await client.from('drivers').update({'verification_status': 'rejected'}).eq('id', driverId);
+    ref.invalidate(pendingDriversProvider);
+  }
+}
+
+final adminControllerProvider = Provider((ref) => AdminController(ref));

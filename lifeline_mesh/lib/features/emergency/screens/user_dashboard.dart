@@ -8,9 +8,10 @@ import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/emergency_badge.dart';
 import '../../../providers/emergency_provider.dart';
 import '../../../providers/auth_provider.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'community_funding_view.dart';
 import '../../payments/screens/wallet_screen.dart';
+import '../../../providers/driver_provider.dart';
+import '../../ai/screens/ai_triage_screen.dart';
 
 class UserDashboard extends ConsumerStatefulWidget {
   const UserDashboard({super.key});
@@ -71,6 +72,10 @@ class _UserDashboardState extends ConsumerState<UserDashboard> {
               label: 'Community',
             ),
             BottomNavigationBarItem(
+              icon: Icon(Icons.smart_toy_outlined),
+              label: 'AI Triage',
+            ),
+            BottomNavigationBarItem(
               icon: Icon(Icons.account_balance_wallet),
               label: 'Wallet',
             ),
@@ -91,8 +96,10 @@ class _UserDashboardState extends ConsumerState<UserDashboard> {
       case 1:
         return 'Community Support';
       case 2:
-        return 'Wallet';
+        return 'AI Assistant';
       case 3:
+        return 'Wallet';
+      case 4:
         return 'Profile';
       default:
         return 'Lifeline';
@@ -106,8 +113,10 @@ class _UserDashboardState extends ConsumerState<UserDashboard> {
       case 1:
         return const CommunityFundingView();
       case 2:
-        return const WalletScreen();
+        return const AiTriageScreen();
       case 3:
+        return const WalletScreen();
+      case 4:
         return const _ProfileTab();
       default:
         return const SizedBox.shrink();
@@ -137,13 +146,14 @@ class _HomeTab extends ConsumerWidget {
   }
 }
 
-class _NoEmergencyView extends StatelessWidget {
+class _NoEmergencyView extends ConsumerWidget {
   final bool isDriver;
 
   const _NoEmergencyView({required this.isDriver});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hasApplied = ref.watch(hasAppliedToDriveProvider);
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -186,7 +196,15 @@ class _NoEmergencyView extends StatelessWidget {
                 color: Colors.transparent,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(20),
-                  onTap: () => isDriver ? context.go('/driver/dashboard') : context.push('/user/apply_driver'),
+                  onTap: () {
+                    if (isDriver) {
+                      context.go('/driver/dashboard');
+                    } else if (hasApplied) {
+                      context.push('/user/apply_driver/pending');
+                    } else {
+                      context.push('/user/apply_driver');
+                    }
+                  },
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),
                     child: Row(
@@ -197,7 +215,7 @@ class _NoEmergencyView extends StatelessWidget {
                             color: Colors.white.withValues(alpha: 0.2),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.drive_eta, color: Colors.white, size: 28),
+                          child: Icon(hasApplied ? Icons.hourglass_top : Icons.drive_eta, color: Colors.white, size: 28),
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -205,7 +223,7 @@ class _NoEmergencyView extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                isDriver ? 'Switch to Driver Portal' : 'Apply to be a Driver',
+                                isDriver ? 'Switch to Driver Portal' : (hasApplied ? 'Application Pending' : 'Apply to be a Driver'),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 18,
@@ -214,7 +232,7 @@ class _NoEmergencyView extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                isDriver ? 'Go online and receive dispatch alerts.' : 'Earn money by transporting patients.',
+                                isDriver ? 'Go online and receive dispatch alerts.' : (hasApplied ? 'We are currently reviewing your application.' : 'Earn money by transporting patients.'),
                                 style: TextStyle(
                                   color: Colors.white.withValues(alpha: 0.9),
                                   fontSize: 13,
