@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Emergency } from '../hooks/useRealtimeEmergencies';
+import { supabase } from '../lib/supabase';
 
 const AVATARS = ['#EF4444', '#3B82F6', '#8B5CF6', '#10B981', '#F59E0B'];
 const initials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '??';
@@ -24,6 +25,14 @@ const timeAgo = (ts: string) => {
 
 const EmergencyTable: React.FC<{ emergencies: Emergency[] }> = ({ emergencies }) => {
   const activeEmergencies = emergencies.filter(e => !['completed', 'cancelled'].includes(e.status));
+
+  const handleAcknowledge = async (id: string) => {
+    try {
+      await supabase.from('emergencies').update({ status: 'hospital_prepared' }).eq('id', id);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   if (activeEmergencies.length === 0) {
     return (
@@ -96,6 +105,21 @@ const EmergencyTable: React.FC<{ emergencies: Emergency[] }> = ({ emergencies })
               <td style={{ color: 'var(--text-secondary)', fontSize: '11px', whiteSpace: 'nowrap' }}>{timeAgo(em.created_at)}</td>
               <td>
                 <div className="row-actions">
+                  {(em.status === 'en_route_hospital' || em.status === 'driver_arrived') && (
+                    <button 
+                      className="row-btn" 
+                      style={{ color: '#10B981', background: 'rgba(16,185,129,0.1)', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                      title="Acknowledge & Prepare ER"
+                      onClick={() => handleAcknowledge(em.id)}
+                    >
+                      Acknowledge
+                    </button>
+                  )}
+                  {em.status === 'hospital_prepared' && (
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: '#3B82F6', marginRight: '8px' }}>
+                      ✓ Prepared
+                    </span>
+                  )}
                   <button className="row-btn" title="View Details">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />

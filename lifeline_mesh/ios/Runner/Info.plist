@@ -49,5 +49,13 @@
 	<string>This app requires speech recognition to allow you to quickly dictate emergency symptoms when you cannot type.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app needs access to your microphone to capture your speech for symptom description during an emergency.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app requires camera access to upload identity documents for verification.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app requires gallery access to upload identity documents.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app needs your location to dispatch ambulances to your exact coordinates.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Drivers need background location access to stream their live position to the hospital.</string>
 </dict>
 </plist>

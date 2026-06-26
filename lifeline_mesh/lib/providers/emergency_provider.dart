@@ -4,6 +4,7 @@ import '../models/emergency_model.dart';
 import '../models/enums/emergency_status.dart';
 import '../core/services/supabase_service.dart';
 import '../core/constants/api_constants.dart';
+import '../core/services/notification_service.dart';
 
 final emergencyListProvider = FutureProvider<List<EmergencyModel>>((ref) async {
   final supabase = ref.read(supabaseServiceProvider);
@@ -21,6 +22,8 @@ final activeEmergencyProvider = StreamProvider<EmergencyModel?>((ref) {
 
   if (userId == null) return Stream.value(null);
 
+  EmergencyStatus? previousStatus;
+
   return supabase
       .streamQuery(ApiConstants.tableEmergencies, column: 'patient_id', value: userId)
       .map((list) {
@@ -28,7 +31,30 @@ final activeEmergencyProvider = StreamProvider<EmergencyModel?>((ref) {
         .map((e) => EmergencyModel.fromJson(e))
         .where((e) => e.isActive)
         .toList();
-    return active.isNotEmpty ? active.first : null;
+        
+    final currentEmergency = active.isNotEmpty ? active.first : null;
+    
+    // Check if status changed and fire notification
+    if (currentEmergency != null) {
+      if (previousStatus != null && previousStatus != currentEmergency.status) {
+        if (currentEmergency.status == EmergencyStatus.driverArrived) {
+          NotificationService().showNotification(
+            id: 1,
+            title: 'Ambulance Arrived 🚑',
+            body: 'Your driver has arrived at your location.',
+          );
+        } else if (currentEmergency.status == EmergencyStatus.hospitalPrepared) {
+          NotificationService().showNotification(
+            id: 2,
+            title: 'Hospital Prepared 🏥',
+            body: 'The destination hospital has acknowledged the emergency and is ready.',
+          );
+        }
+      }
+      previousStatus = currentEmergency.status;
+    }
+    
+    return currentEmergency;
   });
 });
 
