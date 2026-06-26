@@ -6,6 +6,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/services/ai_service.dart';
+import '../../../providers/medical_profile_provider.dart';
 
 class AiHealthSpecialistScreen extends ConsumerStatefulWidget {
   const AiHealthSpecialistScreen({super.key});
@@ -22,6 +23,7 @@ class _AiHealthSpecialistScreenState extends ConsumerState<AiHealthSpecialistScr
   
   String? _wellnessPlan;
   bool _isLoading = false;
+  bool _initialized = false;
 
   final List<String> _bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
   final List<String> _genotypes = ['AA', 'AS', 'AC', 'SS', 'SC', 'CC'];
@@ -65,6 +67,22 @@ class _AiHealthSpecialistScreenState extends ConsumerState<AiHealthSpecialistScr
 
   @override
   Widget build(BuildContext context) {
+    final profileAsync = ref.watch(medicalProfileProvider);
+
+    if (!_initialized && profileAsync.hasValue && profileAsync.value != null) {
+      final p = profileAsync.value!;
+      if (p.bloodGroup.isNotEmpty && _bloodGroups.contains(p.bloodGroup)) {
+        _selectedBloodGroup = p.bloodGroup;
+      }
+      if (p.genotype.isNotEmpty && _genotypes.contains(p.genotype)) {
+        _selectedGenotype = p.genotype;
+      }
+      _allergiesController.text = p.allergies;
+      _conditionsController.text = p.chronicConditions;
+      // Use Future.microtask or post frame callback if setState is needed, but we can just set them before build returns.
+      _initialized = true;
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF0D1117),
       appBar: AppBar(
@@ -223,6 +241,7 @@ class _AiHealthSpecialistScreenState extends ConsumerState<AiHealthSpecialistScr
 
   Widget _buildDropdown(String hint, List<String> items, String? value, ValueChanged<String?> onChanged) {
     return DropdownButtonFormField<String>(
+      isExpanded: true,
       value: value,
       items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
       onChanged: onChanged,

@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/colors.dart';
 import '../../../providers/community_provider.dart';
 import '../../../core/services/moolre_api_service.dart';
+import '../../../providers/payment_method_provider.dart';
 
 class WalletScreen extends ConsumerWidget {
   const WalletScreen({super.key});
@@ -170,8 +171,10 @@ class WalletScreen extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setSheetState) {
+        return Consumer(
+          builder: (context, ref, child) {
+            final methodsAsync = ref.watch(paymentMethodsProvider);
+
             return Padding(
               padding: const EdgeInsets.all(24.0),
               child: Column(
@@ -180,19 +183,34 @@ class WalletScreen extends ConsumerWidget {
                 children: [
                   const Text('Payment Methods', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
                   const SizedBox(height: 16),
-                  ..._mockPaymentMethods.map((pm) {
-                    return ListTile(
-                      leading: Icon(pm['icon'], color: pm['color']),
-                      title: Text(pm['title'], style: const TextStyle(color: Colors.white)),
-                      subtitle: Text(pm['subtitle'], style: const TextStyle(color: Colors.white70)),
-                      trailing: Icon(pm['isLinked'] ? Icons.check_circle : Icons.add, color: pm['isLinked'] ? Colors.green : Colors.white54),
-                      onTap: () {
-                        _showAddEditPaymentDialog(context, pm, () {
-                          setSheetState(() {});
-                        });
-                      },
-                    );
-                  }).toList(),
+                  methodsAsync.when(
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (error, _) => Center(child: Text('Error: $error', style: const TextStyle(color: Colors.red))),
+                    data: (methods) {
+                       final availableProviders = [
+                         {'name': 'MTN Mobile Money', 'icon': Icons.phone_android, 'color': '#FFC107'},
+                         {'name': 'Telecel Cash', 'icon': Icons.phone_android, 'color': '#F44336'},
+                         {'name': 'Visa / Mastercard', 'icon': Icons.credit_card, 'color': '#2196F3'},
+                       ];
+
+                       return Column(
+                         children: availableProviders.map((provider) {
+                           final existingMethod = methods.where((m) => m.providerName == provider['name']).firstOrNull;
+                           final isLinked = existingMethod != null;
+
+                           return ListTile(
+                             leading: Icon(provider['icon'] as IconData, color: Color(int.parse((provider['color'] as String).replaceAll('#', '0xff')))),
+                             title: Text(provider['name'] as String, style: const TextStyle(color: Colors.white)),
+                             subtitle: Text(isLinked ? existingMethod.accountNumber : (provider['name'] == 'Visa / Mastercard' ? 'Add a debit or credit card' : 'Not linked'), style: const TextStyle(color: Colors.white70)),
+                             trailing: Icon(isLinked ? Icons.check_circle : Icons.add, color: isLinked ? Colors.green : Colors.white54),
+                             onTap: () {
+                               _showAddEditPaymentDialog(context, ref, provider, existingMethod);
+                             },
+                           );
+                         }).toList(),
+                       );
+                    },
+                  ),
                   const SizedBox(height: 16),
                 ],
               ),
@@ -203,16 +221,16 @@ class WalletScreen extends ConsumerWidget {
     );
   }
 
-  void _showAddEditPaymentDialog(BuildContext context, Map<String, dynamic> method, VoidCallback onSaved) {
-    final isEditing = method['isLinked'];
-    final controller = TextEditingController();
+  void _showAddEditPaymentDialog(BuildContext context, WidgetRef ref, Map<String, dynamic> provider, PaymentMethodModel? existingMethod) {
+    final isEditing = existingMethod != null;
+    final controller = TextEditingController(text: isEditing ? existingMethod.accountNumber.replaceAll('*', '').trim() : '');
     
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF161B22),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(isEditing ? 'Edit ${method['title']}' : 'Add ${method['title']}', style: const TextStyle(color: Colors.white)),
+        title: Text(isEditing ? 'Edit ${provider['name']}' : 'Add ${provider['name']}', style: const TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -230,25 +248,53 @@ class WalletScreen extends ConsumerWidget {
           ],
         ),
         actions: [
+          if (isEditing)
+            TextButton(
+              onPressed: () async {
+                await ref.read(deletePaymentMethodProvider)(existingMethod.id!);
+                if (context.mounted) Navigator.pop(context);
+              },
+              child: const Text('Remove', style: TextStyle(color: Colors.redAccent)),
+            ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               if (controller.text.isNotEmpty) {
-                // Update the mock state
                 String last4 = controller.text.length >= 4 
                     ? controller.text.substring(controller.text.length - 4) 
                     : controller.text;
-                method['subtitle'] = '**** **** $last4';
-                method['isLinked'] = true;
-                onSaved();
+                
+                final newMethod = PaymentMethodModel(
+                   userId: '',
+                   providerName: provider['name'] as String,
+                   accountNumber: '**** **** $last4',
+                   iconName: 'phone_android',
+                   colorCode: provider['color'] as String,
+                   isDefault: true,
+                );
+
+                try {
+                  if (isEditing) {
+                    await ref.read(deletePaymentMethodProvider)(existingMethod.id!);
+                  }
+                  await ref.read(addPaymentMethodProvider)(newMethod);
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(isEditing ? '${provider['name']} updated successfully!' : '${provider['name']} added successfully!')),
+                    );
+                  }
+                } catch (e) {
+                   if (context.mounted) {
+                     ScaffoldMessenger.of(context).showSnackBar(
+                       SnackBar(content: Text('Error saving: $e')),
+                     );
+                   }
+                }
               }
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(isEditing ? '${method['title']} updated successfully!' : '${method['title']} added successfully!')),
-              );
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.trustBlue),
             child: const Text('Save', style: TextStyle(color: Colors.white)),
@@ -259,30 +305,7 @@ class WalletScreen extends ConsumerWidget {
   }
 }
 
-// Global mock state so it persists while the app is running
-List<Map<String, dynamic>> _mockPaymentMethods = [
-  {
-    'title': 'MTN Mobile Money',
-    'subtitle': '**** **** 1234',
-    'icon': Icons.phone_android,
-    'color': Colors.amber,
-    'isLinked': true,
-  },
-  {
-    'title': 'Telecel Cash',
-    'subtitle': 'Not linked',
-    'icon': Icons.phone_android,
-    'color': Colors.red,
-    'isLinked': false,
-  },
-  {
-    'title': 'Visa / Mastercard',
-    'subtitle': 'Add a debit or credit card',
-    'icon': Icons.credit_card,
-    'color': Colors.blue,
-    'isLinked': false,
-  },
-];
+
 
 class _TopUpBottomSheet extends ConsumerStatefulWidget {
   const _TopUpBottomSheet();

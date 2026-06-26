@@ -36,9 +36,9 @@ class AiService {
   }
 
   /// Get a first-aid text response from the AI assistant.
-  Future<String> getFirstAidAdvice(String userQuery, {MedicalProfile? medicalProfile}) async {
+  Future<String> getFirstAidAdvice(String userQuery, {MedicalProfile? medicalProfile, String language = 'English'}) async {
     try {
-      debugPrint('AI Service: Generating triage advice for "$userQuery"');
+      debugPrint('AI Service: Generating triage advice for "$userQuery" in $language');
       
       final model = _triageModel;
       if (model == null) {
@@ -54,6 +54,15 @@ User's Current Symptoms/Query:
 "$userQuery"
 
 Please provide triage and first-aid advice taking the above medical profile into account. If they have allergies or conditions relevant to the symptoms, highlight them.
+
+IMPORTANT INSTRUCTION: You MUST reply entirely in $language.
+''';
+      } else {
+        prompt = '''
+User's Current Symptoms/Query:
+"$userQuery"
+
+IMPORTANT INSTRUCTION: You MUST reply entirely in $language.
 ''';
       }
 

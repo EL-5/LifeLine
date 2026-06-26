@@ -516,6 +516,7 @@ class _DriverDrawer extends ConsumerWidget {
             title: 'Settings',
             onTap: () {
               Navigator.pop(context);
+              context.push('/user/settings');
             },
           ),
 

@@ -8,6 +8,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/services/ai_service.dart';
 import '../../../providers/medical_profile_provider.dart';
+import '../../../providers/settings_provider.dart';
 
 class AiTriageScreen extends ConsumerStatefulWidget {
   const AiTriageScreen({super.key});
@@ -102,8 +103,13 @@ class _AiTriageScreenState extends ConsumerState<AiTriageScreen> {
 
     final aiService = ref.read(aiServiceProvider);
     final profile = ref.read(medicalProfileProvider).value;
+    final settings = ref.read(settingsProvider).value;
     
-    String response = await aiService.getFirstAidAdvice(text, medicalProfile: profile);
+    String response = await aiService.getFirstAidAdvice(
+      text, 
+      medicalProfile: profile,
+      language: settings?.language ?? 'English',
+    );
 
     bool triggerSos = false;
     if (response.contains('[TRIGGER_SOS]')) {
