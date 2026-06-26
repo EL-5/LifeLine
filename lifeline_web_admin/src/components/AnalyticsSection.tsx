@@ -1,70 +1,53 @@
 import React from 'react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const NEW = [18, 32, 25, 40, 28, 15, 34];
-const OLD = [10, 20, 18, 28, 22, 10, 20];
-const MAX = 50;
+const data = [
+  { name: 'Mon', emergencies: 18, prev: 10 },
+  { name: 'Tue', emergencies: 32, prev: 20 },
+  { name: 'Wed', emergencies: 25, prev: 18 },
+  { name: 'Thu', emergencies: 40, prev: 28 },
+  { name: 'Fri', emergencies: 28, prev: 22 },
+  { name: 'Sat', emergencies: 15, prev: 10 },
+  { name: 'Sun', emergencies: 34, prev: 20 },
+];
 
 const AnalyticsSection: React.FC = () => {
   return (
     <div>
-      <div className="chart-legend">
-        <div className="legend-item">
-          <div className="legend-dot" style={{ background: '#6366F1' }} />
+      <div className="chart-legend" style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+        <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-secondary)' }}>
+          <div className="legend-dot" style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#6366F1' }} />
           New Emergencies
         </div>
-        <div className="legend-item">
-          <div className="legend-dot" style={{ background: '#E0E7FF' }} />
+        <div className="legend-item" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-secondary)' }}>
+          <div className="legend-dot" style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#E0E7FF' }} />
           Previous Period
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px', height: '120px', paddingBottom: '24px', position: 'relative' }}>
-        {/* Y-axis lines */}
-        {[0, 25, 50].map(v => (
-          <div key={v} style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: `${(v / MAX) * 96 + 24}px`,
-            borderTop: '1px dashed var(--border)',
-            display: 'flex',
-            alignItems: 'center',
-          }}>
-            <span style={{ fontSize: '9px', color: 'var(--text-dim)', position: 'absolute', left: 0, top: '-8px' }}>{v}</span>
-          </div>
-        ))}
-
-        {DAYS.map((day, i) => (
-          <div key={day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
-            <div style={{ display: 'flex', gap: '3px', alignItems: 'flex-end', width: '100%' }}>
-              {/* Old bar */}
-              <div
-                style={{
-                  flex: 1,
-                  height: `${(OLD[i] / MAX) * 96}px`,
-                  background: '#E0E7FF',
-                  borderRadius: '3px 3px 0 0',
-                  transition: 'height 0.8s ease',
-                  minHeight: '4px',
-                }}
-              />
-              {/* New bar */}
-              <div
-                style={{
-                  flex: 1,
-                  height: `${(NEW[i] / MAX) * 96}px`,
-                  background: 'linear-gradient(180deg, #818CF8, #6366F1)',
-                  borderRadius: '3px 3px 0 0',
-                  transition: 'height 0.8s ease',
-                  minHeight: '4px',
-                  boxShadow: '0 2px 8px rgba(99,102,241,0.3)',
-                }}
-              />
-            </div>
-            <span style={{ fontSize: '9px', color: 'var(--text-dim)', marginTop: '4px' }}>{day}</span>
-          </div>
-        ))}
+      <div style={{ height: '160px', width: '100%' }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="colorNew" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#6366F1" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="#6366F1" stopOpacity={0}/>
+              </linearGradient>
+              <linearGradient id="colorPrev" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#94A3B8" stopOpacity={0.2}/>
+                <stop offset="95%" stopColor="#94A3B8" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-dim)' }} dy={10} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: 'var(--text-dim)' }} />
+            <Tooltip 
+              contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow-md)', fontSize: '12px', fontWeight: 600 }}
+              itemStyle={{ fontSize: '11px' }}
+            />
+            <Area type="monotone" dataKey="prev" stroke="#CBD5E1" strokeWidth={2} fillOpacity={1} fill="url(#colorPrev)" />
+            <Area type="monotone" dataKey="emergencies" stroke="#6366F1" strokeWidth={3} fillOpacity={1} fill="url(#colorNew)" activeDot={{ r: 6, strokeWidth: 0, fill: '#6366F1' }} />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
 
       <div style={{ display: 'flex', gap: '20px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>

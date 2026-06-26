@@ -97,3 +97,26 @@ final deletePaymentMethodProvider = Provider((ref) {
     ref.invalidate(paymentMethodsProvider);
   };
 });
+
+final setDefaultPaymentMethodProvider = Provider((ref) {
+  final supabase = ref.read(supabaseServiceProvider).client;
+  
+  return (String id) async {
+    final user = supabase.auth.currentUser;
+    if (user == null) throw Exception('User not logged in');
+
+    // 1. Unset all current defaults for this user
+    await supabase
+        .from('payment_methods')
+        .update({'is_default': false})
+        .eq('user_id', user.id);
+
+    // 2. Set the selected one as default
+    await supabase
+        .from('payment_methods')
+        .update({'is_default': true})
+        .eq('id', id);
+
+    ref.invalidate(paymentMethodsProvider);
+  };
+});

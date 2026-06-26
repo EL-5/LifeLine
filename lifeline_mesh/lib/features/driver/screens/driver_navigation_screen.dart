@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/colors.dart';
@@ -20,6 +22,62 @@ class DriverNavigationScreen extends ConsumerStatefulWidget {
 
 class _DriverNavigationScreenState extends ConsumerState<DriverNavigationScreen> {
   bool _isUpdating = false;
+  StreamSubscription<Position>? _positionStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _startLocationTracking();
+  }
+
+  @override
+  void dispose() {
+    _positionStream?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _startLocationTracking() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
+    }
+    
+    if (permission == LocationPermission.deniedForever) return;
+
+    // Stream location every 5 seconds
+    _positionStream = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5, // minimum change (in meters) to trigger update
+        timeLimit: Duration(seconds: 5), // but also fire updates at least this often if requested
+      ),
+    ).listen((Position position) {
+      _updateDriverLocationInDb(position.latitude, position.longitude);
+    });
+  }
+
+  Future<void> _updateDriverLocationInDb(double lat, double lng) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    
+    try {
+      await Supabase.instance.client
+          .from('drivers')
+          .update({
+            'current_location': {'lat': lat, 'lng': lng}
+          })
+          .eq('user_id', user.id);
+    } catch (_) {
+      // Ignore background errors for location updates
+    }
+  }
 
   Future<void> _updateStatus(String newStatusStr) async {
     setState(() => _isUpdating = true);

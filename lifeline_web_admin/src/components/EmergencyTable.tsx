@@ -1,21 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
-
-interface Emergency {
-  id: string;
-  category: string;
-  severity: string;
-  status: string;
-  patient_id: string;
-  driver_id: string | null;
-  target_amount: number;
-  raised_amount: number;
-  symptoms: string[];
-  created_at: string;
-}
+import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Emergency } from '../hooks/useRealtimeEmergencies';
 
 const AVATARS = ['#EF4444', '#3B82F6', '#8B5CF6', '#10B981', '#F59E0B'];
-const initials = (id: string) => id.slice(0, 2).toUpperCase();
+const initials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '??';
 
 const categoryClass = (cat: string) => {
   if (cat.includes('CARDIAC') || cat.includes('HEART')) return 'cardiac';
@@ -34,28 +22,10 @@ const timeAgo = (ts: string) => {
   return `${Math.floor(d / 3600)}h ago`;
 };
 
-const EmergencyTable: React.FC = () => {
-  const [emergencies, setEmergencies] = useState<Emergency[]>([]);
+const EmergencyTable: React.FC<{ emergencies: Emergency[] }> = ({ emergencies }) => {
+  const activeEmergencies = emergencies.filter(e => !['completed', 'cancelled'].includes(e.status));
 
-  useEffect(() => {
-    const fetch = async () => {
-      const { data } = await supabase
-        .from('emergencies')
-        .select('*')
-        .neq('status', 'completed')
-        .neq('status', 'cancelled')
-        .order('created_at', { ascending: false });
-      if (data) setEmergencies(data as Emergency[]);
-    };
-    fetch();
-    const sub = supabase
-      .channel('em-table')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'emergencies' }, fetch)
-      .subscribe();
-    return () => { supabase.removeChannel(sub); };
-  }, []);
-
-  if (emergencies.length === 0) {
+  if (activeEmergencies.length === 0) {
     return (
       <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-dim)' }}>
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ margin: '0 auto 12px', display: 'block', opacity: 0.3 }}>
@@ -81,20 +51,28 @@ const EmergencyTable: React.FC = () => {
         </tr>
       </thead>
       <tbody>
-        {emergencies.map((em, i) => {
-          const pct = em.target_amount > 0 ? Math.min((em.raised_amount / em.target_amount) * 100, 100) : 0;
-          const statusClass = em.driver_id ? 'en-route' : 'awaiting';
-          const statusLabel = em.driver_id ? 'En Route' : 'Awaiting';
-          return (
-            <tr key={em.id}>
+        <AnimatePresence>
+          {activeEmergencies.map((em, i) => {
+            const pct = em.target_amount > 0 ? Math.min((em.raised_amount / em.target_amount) * 100, 100) : 0;
+            const statusClass = em.driver_id ? 'en-route' : 'awaiting';
+            const statusLabel = em.driver_id ? 'En Route' : 'Awaiting';
+            return (
+              <motion.tr 
+                key={em.id}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3 }}
+                layout
+              >
               <td>
                 <div className="patient-cell">
                   <div className="patient-avatar" style={{ background: AVATARS[i % AVATARS.length] }}>
-                    {initials(em.patient_id)}
+                    {initials(em.patient_name)}
                   </div>
                   <div>
-                    <div className="patient-name">Patient #{em.patient_id.slice(-4).toUpperCase()}</div>
-                    <div className="patient-meta">{em.symptoms.slice(0, 1).join(', ')}</div>
+                    <div className="patient-name">{em.patient_name}</div>
+                    <div className="patient-meta">{em.symptoms?.[0] || 'Unknown'}</div>
                   </div>
                 </div>
               </td>
@@ -131,9 +109,10 @@ const EmergencyTable: React.FC = () => {
                   </button>
                 </div>
               </td>
-            </tr>
-          );
-        })}
+              </motion.tr>
+            );
+          })}
+        </AnimatePresence>
       </tbody>
     </table>
   );

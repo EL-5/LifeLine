@@ -36,3 +36,13 @@ enabled = true
 
 [experimental]
 orioledb_version = "1"
+[functions.verify-identity]
+enabled = true
+verify_jwt = false
+import_map = "./functions/verify-identity/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/verify-identity/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/verify-identity/*.html" ]

@@ -4,6 +4,7 @@ import '../../../core/theme/colors.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../core/services/supabase_service.dart';
+import 'identity_verification_screen.dart';
 
 class AccountProfileScreen extends ConsumerStatefulWidget {
   const AccountProfileScreen({super.key});
@@ -91,6 +92,10 @@ class _AccountProfileScreenState extends ConsumerState<AccountProfileScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text('Personal Information', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+
+              _buildVerificationBanner(context),
+              
               const SizedBox(height: 24),
               
               TextFormField(
@@ -126,6 +131,88 @@ class _AccountProfileScreenState extends ConsumerState<AccountProfileScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildVerificationBanner(BuildContext context) {
+    final user = ref.watch(authProvider).user;
+    if (user == null) return const SizedBox.shrink();
+
+    final status = user.verificationStatus;
+    
+    Color bgColor;
+    Color textColor;
+    IconData icon;
+    String title;
+    String subtitle;
+    bool showAction = false;
+
+    if (status == 'verified') {
+      bgColor = AppColors.trustBlue.withOpacity(0.1);
+      textColor = AppColors.trustBlue;
+      icon = Icons.verified;
+      title = 'Identity Verified';
+      subtitle = 'You have full access to community features.';
+    } else if (status == 'pending') {
+      bgColor = Colors.orange.withOpacity(0.1);
+      textColor = Colors.orange;
+      icon = Icons.pending_actions;
+      title = 'Verification Pending';
+      subtitle = 'Your documents are currently under review.';
+    } else if (status == 'suspended') {
+      bgColor = AppColors.emergencyRed.withOpacity(0.1);
+      textColor = AppColors.emergencyRed;
+      icon = Icons.gavel;
+      title = 'Account Suspended';
+      subtitle = 'Please contact support for more information.';
+    } else {
+      // unverified
+      bgColor = const Color(0xFF161B22);
+      textColor = Colors.white;
+      icon = Icons.warning_amber_rounded;
+      title = 'Identity Unverified';
+      subtitle = 'Verify your identity to unlock all features.';
+      showAction = true;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: textColor.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: textColor, size: 28),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 4),
+                Text(subtitle, style: TextStyle(color: textColor.withOpacity(0.8), fontSize: 13)),
+              ],
+            ),
+          ),
+          if (showAction) ...[
+            const SizedBox(width: 12),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const IdentityVerificationScreen()));
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.trustBlue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              child: const Text('Verify', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ]
+        ],
       ),
     );
   }

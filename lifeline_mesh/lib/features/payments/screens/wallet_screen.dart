@@ -202,7 +202,11 @@ class WalletScreen extends ConsumerWidget {
                              leading: Icon(provider['icon'] as IconData, color: Color(int.parse((provider['color'] as String).replaceAll('#', '0xff')))),
                              title: Text(provider['name'] as String, style: const TextStyle(color: Colors.white)),
                              subtitle: Text(isLinked ? existingMethod.accountNumber : (provider['name'] == 'Visa / Mastercard' ? 'Add a debit or credit card' : 'Not linked'), style: const TextStyle(color: Colors.white70)),
-                             trailing: Icon(isLinked ? Icons.check_circle : Icons.add, color: isLinked ? Colors.green : Colors.white54),
+                             trailing: isLinked 
+                                ? (existingMethod.isDefault 
+                                    ? const Icon(Icons.star, color: Colors.amber) 
+                                    : const Icon(Icons.check_circle, color: Colors.green))
+                                : const Icon(Icons.add, color: Colors.white54),
                              onTap: () {
                                _showAddEditPaymentDialog(context, ref, provider, existingMethod);
                              },
@@ -248,7 +252,17 @@ class WalletScreen extends ConsumerWidget {
           ],
         ),
         actions: [
-          if (isEditing)
+          if (isEditing) ...[
+            TextButton(
+              onPressed: () async {
+                await ref.read(setDefaultPaymentMethodProvider)(existingMethod.id!);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Set as default successfully.')));
+                }
+              },
+              child: const Text('Set Default', style: TextStyle(color: AppColors.trustBlue)),
+            ),
             TextButton(
               onPressed: () async {
                 await ref.read(deletePaymentMethodProvider)(existingMethod.id!);
@@ -256,6 +270,7 @@ class WalletScreen extends ConsumerWidget {
               },
               child: const Text('Remove', style: TextStyle(color: Colors.redAccent)),
             ),
+          ],
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
@@ -318,18 +333,35 @@ class _TopUpBottomSheetState extends ConsumerState<_TopUpBottomSheet> {
   double _amount = 100;
   bool _isLoading = false;
   final TextEditingController _customAmountController = TextEditingController(text: '100');
-  final TextEditingController _phoneController = TextEditingController();
+  
+  PaymentMethodModel? _defaultMethod;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDefaultMethod();
+  }
+
+  Future<void> _loadDefaultMethod() async {
+    try {
+      final methods = await ref.read(paymentMethodsProvider.future);
+      if (mounted) {
+        setState(() {
+          _defaultMethod = methods.where((m) => m.isDefault).firstOrNull ?? methods.firstOrNull;
+        });
+      }
+    } catch (_) {}
+  }
 
   @override
   void dispose() {
     _customAmountController.dispose();
-    _phoneController.dispose();
     super.dispose();
   }
 
   Future<void> _processTopUp() async {
-    if (_phoneController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter Mobile Money Number')));
+    if (_defaultMethod == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please link a payment method first.')));
       return;
     }
 
@@ -340,7 +372,7 @@ class _TopUpBottomSheetState extends ConsumerState<_TopUpBottomSheet> {
       // We simulate top-up with the same payment endpoint
       final success = await moolre.fundCommunityPool(
         amount: _amount,
-        phone: _phoneController.text,
+        phone: _defaultMethod!.accountNumber, // Use saved default method
       );
       
       if (success) {
@@ -396,7 +428,7 @@ class _TopUpBottomSheetState extends ConsumerState<_TopUpBottomSheet> {
         children: [
           const Text('Top Up Wallet', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 8),
-          const Text('Enter amount to add via Mobile Money', style: TextStyle(color: Colors.white70)),
+          const Text('Select amount to add to your balance', style: TextStyle(color: Colors.white70)),
           const SizedBox(height: 24),
           Wrap(
             spacing: 12,
@@ -441,20 +473,34 @@ class _TopUpBottomSheetState extends ConsumerState<_TopUpBottomSheet> {
               }
             },
           ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _phoneController,
-            keyboardType: TextInputType.phone,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              labelText: 'Mobile Money Number',
-              labelStyle: const TextStyle(color: Colors.white54),
-              filled: true,
-              fillColor: const Color(0xFF0D1117),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-              prefixIcon: const Icon(Icons.phone, color: Colors.white54),
-            ),
-          ),
+          const SizedBox(height: 24),
+          if (_defaultMethod != null)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0D1117),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: Row(
+                children: [
+                  Icon(_defaultMethod!.providerName.contains('Visa') ? Icons.credit_card : Icons.phone_android, color: Colors.white54),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Paying with', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                        Text('${_defaultMethod!.providerName} (${_defaultMethod!.accountNumber})', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.check_circle, color: AppColors.successGreen),
+                ],
+              ),
+            )
+          else
+            const Text('No payment method linked. Please add one in Wallet settings.', style: TextStyle(color: AppColors.emergencyRed)),
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: _isLoading ? null : _processTopUp,
