@@ -6,7 +6,7 @@ import '../../../core/widgets/emergency_badge.dart';
 import '../../../providers/emergency_provider.dart';
 import '../../../models/enums/emergency_status.dart';
 import '../../../models/emergency_model.dart';
-import 'package:flutter_tts/flutter_tts.dart';
+import '../../../core/services/ai_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -49,14 +49,14 @@ class _TrackingContent extends ConsumerStatefulWidget {
 }
 
 class _TrackingContentState extends ConsumerState<_TrackingContent> {
-  late FlutterTts _flutterTts;
   bool _voiceEnabled = true;
 
   @override
   void initState() {
     super.initState();
-    _flutterTts = FlutterTts();
-    _speakInstructions();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _speakInstructions();
+    });
   }
 
   @override
@@ -68,8 +68,9 @@ class _TrackingContentState extends ConsumerState<_TrackingContent> {
   }
 
   Future<void> _speakInstructions() async {
+    final aiService = ref.read(aiServiceProvider);
     if (!_voiceEnabled) {
-      await _flutterTts.stop();
+      await aiService.stop();
       return;
     }
     
@@ -93,14 +94,12 @@ class _TrackingContentState extends ConsumerState<_TrackingContent> {
       }
     }
 
-    await _flutterTts.setLanguage("en-US");
-    await _flutterTts.setSpeechRate(0.5);
-    await _flutterTts.speak(message);
+    await aiService.speak(message);
   }
 
   @override
   void dispose() {
-    _flutterTts.stop();
+    ref.read(aiServiceProvider).stop();
     super.dispose();
   }
 
@@ -170,7 +169,7 @@ class _TrackingContentState extends ConsumerState<_TrackingContent> {
                         ),
                         onPressed: () {
                           setState(() => _voiceEnabled = !_voiceEnabled);
-                          if (!_voiceEnabled) _flutterTts.stop();
+                          if (!_voiceEnabled) ref.read(aiServiceProvider).stop();
                           else _speakInstructions();
                         },
                       ),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../providers/emergency_provider.dart';
+import '../../../core/services/moolre_api_service.dart';
 
 class CommunityFundingView extends ConsumerWidget {
   const CommunityFundingView({super.key});
@@ -119,7 +120,7 @@ class CommunityFundingView extends ConsumerWidget {
                         AppButton(
                           label: 'Contribute Now',
                           icon: Icons.volunteer_activism,
-                          onPressed: () => _showDonationModal(context, em.id),
+                          onPressed: () => _showDonationModal(context, em.id, em.category),
                         ),
                     ],
                   ),
@@ -132,77 +133,194 @@ class CommunityFundingView extends ConsumerWidget {
     );
   }
 
-  void _showDonationModal(BuildContext context, String emergencyId) {
+  void _showDonationModal(BuildContext context, String emergencyId, String category) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: const Color(0xFF161B22),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom,
-          left: 24,
-          right: 24,
-          top: 24,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.favorite, color: AppColors.emergencyRed, size: 48),
-            const SizedBox(height: 16),
-            const Text('Support Your Community', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            const Text(
-              'Select an amount to simulate a contribution. 100% of your donation goes directly to emergency care.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 24),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              alignment: WrapAlignment.center,
-              children: [
-                _DonationChip(amount: 50, emergencyId: emergencyId),
-                _DonationChip(amount: 100, emergencyId: emergencyId),
-                _DonationChip(amount: 500, emergencyId: emergencyId),
-              ],
-            ),
-            const SizedBox(height: 32),
-          ],
-        ),
-      ),
+      builder: (ctx) => _DonationModalBottomSheet(emergencyId: emergencyId, category: category),
     );
   }
 }
 
-class _DonationChip extends StatelessWidget {
-  final double amount;
+class _DonationModalBottomSheet extends ConsumerStatefulWidget {
   final String emergencyId;
+  final String category;
 
-  const _DonationChip({required this.amount, required this.emergencyId});
+  const _DonationModalBottomSheet({required this.emergencyId, required this.category});
+
+  @override
+  ConsumerState<_DonationModalBottomSheet> createState() => _DonationModalBottomSheetState();
+}
+
+class _DonationModalBottomSheetState extends ConsumerState<_DonationModalBottomSheet> {
+  double _amount = 50;
+  bool _isLoading = false;
+  final TextEditingController _customAmountController = TextEditingController(text: '50');
+  final TextEditingController _phoneController = TextEditingController();
+  String _selectedNetwork = 'MTN';
+
+  @override
+  void dispose() {
+    _customAmountController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _processPayment() async {
+    if (_phoneController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter Mobile Money Number')));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final moolre = ref.read(moolreApiServiceProvider);
+      
+      // 1. Process Moolre Payment
+      final success = await moolre.fundCommunityPool(
+        amount: _amount,
+        phone: _phoneController.text,
+      );
+      
+      if (success) {
+        // 2. Add it up in the backend
+        await EmergencyFundingService.contribute(widget.emergencyId, _amount);
+        
+        // 3. Send SMS
+        final catName = widget.category.replaceAll('_', ' ').toUpperCase();
+        await moolre.sendEmergencySms(
+          phone: _phoneController.text,
+          message: 'Thank you for your generous contribution of GHS ${_amount.toStringAsFixed(0)} to the $catName! Your support is actively saving a life.',
+        );
+
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Thank you! GHS ${_amount.toStringAsFixed(0)} contributed successfully.')));
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment Error: Could not initiate payment via Moolre.')));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to contribute: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return ActionChip(
-      label: Text('GHS ${amount.toInt()}'),
-      labelStyle: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-      backgroundColor: AppColors.trustBlue,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      onPressed: () async {
-        Navigator.pop(context); // Close modal
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Processing donation...')));
-        
-        try {
-          await EmergencyFundingService.contribute(emergencyId, amount);
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Thank you! GHS $amount contributed successfully.')));
-          }
-        } catch (e) {
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to contribute: $e')));
-          }
-        }
-      },
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+          const Icon(Icons.favorite, color: AppColors.emergencyRed, size: 48),
+          const SizedBox(height: 16),
+          const Text('Support Your Community', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+          const SizedBox(height: 8),
+          const Text(
+            '100% of your donation goes directly to emergency care.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white70),
+          ),
+          const SizedBox(height: 24),
+          
+          // Amount Input
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              const Text('GHS ', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.successGreen)),
+              IntrinsicWidth(
+                child: TextField(
+                  controller: _customAmountController,
+                  keyboardType: TextInputType.number,
+                  style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.successGreen),
+                  decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
+                  onChanged: (val) {
+                    final parsed = double.tryParse(val);
+                    if (parsed != null) setState(() => _amount = parsed);
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            children: [10, 25, 50, 100, 200, 500].map((amount) {
+              final isSelected = _amount == amount;
+              return ChoiceChip(
+                label: Text('GHS $amount'),
+                selected: isSelected,
+                selectedColor: AppColors.successGreenLight,
+                labelStyle: TextStyle(color: isSelected ? AppColors.successGreen : Colors.white),
+                backgroundColor: const Color(0xFF0D1117),
+                onSelected: (_) {
+                  setState(() {
+                    _amount = amount.toDouble();
+                    _customAmountController.text = amount.toString();
+                  });
+                },
+              );
+            }).toList(),
+          ),
+          
+          const SizedBox(height: 24),
+          // Phone Input
+          TextField(
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              labelText: 'Mobile Money Number',
+              labelStyle: const TextStyle(color: Colors.white70),
+              filled: true,
+              fillColor: const Color(0xFF0D1117),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+            ),
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            value: _selectedNetwork,
+            dropdownColor: const Color(0xFF161B22),
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              labelText: 'Network',
+              labelStyle: const TextStyle(color: Colors.white70),
+              filled: true,
+              fillColor: const Color(0xFF0D1117),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+            ),
+            items: ['MTN', 'VODAFONE', 'AIRTELTIGO'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+            onChanged: (v) => setState(() => _selectedNetwork = v!),
+          ),
+
+          const SizedBox(height: 24),
+          if (_isLoading)
+            const CircularProgressIndicator()
+          else
+            AppButton(
+              label: 'Pay via Moolre',
+              onPressed: _processPayment,
+              type: ButtonType.success,
+              icon: Icons.check_circle,
+            ),
+          const SizedBox(height: 32),
+        ],
+      ),
+      ),
     );
   }
 }

@@ -79,8 +79,16 @@ final communityEmergenciesProvider = StreamProvider<List<EmergencyModel>>((ref) 
 class EmergencyFundingService {
   static Future<void> contribute(String emergencyId, double amount) async {
     final client = Supabase.instance.client;
-    final res = await client.from('emergencies').select('raised_amount').eq('id', emergencyId).single();
-    final current = double.tryParse(res['raised_amount'].toString()) ?? 0.0;
-    await client.from('emergencies').update({'raised_amount': current + amount}).eq('id', emergencyId);
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) return;
+    
+    // Call the Edge Function which runs with service role to safely bypass RLS
+    // and trigger the database update for raised_amount
+    await client.functions.invoke('process-contribution', body: {
+      'emergency_id': emergencyId,
+      'contributor_id': userId,
+      'amount': amount,
+      'payment_method': 'MOOLRE_MOBILE_MONEY',
+    });
   }
 }

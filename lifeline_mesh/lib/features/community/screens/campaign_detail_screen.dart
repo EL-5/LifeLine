@@ -1,19 +1,131 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/widgets/app_button.dart';
+import '../../../core/services/moolre_api_service.dart';
 
-class CampaignDetailScreen extends StatefulWidget {
+class CampaignDetailScreen extends ConsumerStatefulWidget {
   final String emergencyId;
 
   const CampaignDetailScreen({super.key, required this.emergencyId});
 
   @override
-  State<CampaignDetailScreen> createState() => _CampaignDetailScreenState();
+  ConsumerState<CampaignDetailScreen> createState() => _CampaignDetailScreenState();
 }
 
-class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
+class _CampaignDetailScreenState extends ConsumerState<CampaignDetailScreen> {
   double _contributionAmount = 50;
+  bool _isLoading = false;
+  final TextEditingController _customAmountController = TextEditingController(text: '50');
+
+  @override
+  void dispose() {
+    _customAmountController.dispose();
+    super.dispose();
+  }
+
+  void _showPaymentDialog() {
+    final phoneController = TextEditingController();
+    String selectedNetwork = 'MTN';
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF161B22),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text('Complete Contribution', style: TextStyle(color: Colors.white)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('You are about to contribute GHS ${_contributionAmount.toStringAsFixed(2)}.', style: const TextStyle(color: Colors.white70)),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'Mobile Money Number',
+                      labelStyle: const TextStyle(color: Colors.white70),
+                      filled: true,
+                      fillColor: const Color(0xFF0D1117),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: selectedNetwork,
+                    dropdownColor: const Color(0xFF161B22),
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'Network',
+                      labelStyle: const TextStyle(color: Colors.white70),
+                      filled: true,
+                      fillColor: const Color(0xFF0D1117),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                    ),
+                    items: ['MTN', 'VODAFONE', 'AIRTELTIGO'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                    onChanged: (v) => setDialogState(() => selectedNetwork = v!),
+                  )
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (phoneController.text.isEmpty) return;
+                    Navigator.pop(context);
+                    _processMoolrePayment(phoneController.text, selectedNetwork);
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.trustBlue),
+                  child: const Text('Pay via Moolre', style: TextStyle(color: Colors.white)),
+                )
+              ]
+            );
+          }
+        );
+      }
+    );
+  }
+
+  Future<void> _processMoolrePayment(String phone, String network) async {
+    setState(() => _isLoading = true);
+    try {
+      final moolre = ref.read(moolreApiServiceProvider);
+      
+      // Use the actual Moolre API method for funding
+      final success = await moolre.fundCommunityPool(
+        amount: _contributionAmount,
+        phone: phone,
+      );
+      
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment Initiated! Please check your phone to authorize.')));
+          
+          // Send the Gratitude SMS via Moolre SMS API
+          await moolre.sendEmergencySms(
+            phone: phone,
+            message: 'Thank you for your generous contribution of GHS ${_contributionAmount.toStringAsFixed(0)} to Emergency Campaign #${widget.emergencyId}! Your support is actively saving a life.',
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment Error: Could not initiate payment via Moolre.')));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Payment Failed: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,11 +201,25 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    Text(
-                      'GHS ${_contributionAmount.toStringAsFixed(0)}',
-                      style: AppTextStyles.displayMedium.copyWith(
-                        color: AppColors.successGreen,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text('GHS ', style: AppTextStyles.headlineLarge.copyWith(color: AppColors.successGreen)),
+                        IntrinsicWidth(
+                          child: TextField(
+                            controller: _customAmountController,
+                            keyboardType: TextInputType.number,
+                            style: AppTextStyles.displayMedium.copyWith(color: AppColors.successGreen),
+                            decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero),
+                            onChanged: (val) {
+                              final parsed = double.tryParse(val);
+                              if (parsed != null) setState(() => _contributionAmount = parsed);
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
                     Wrap(
@@ -104,22 +230,25 @@ class _CampaignDetailScreenState extends State<CampaignDetailScreen> {
                           label: Text('GHS $amount'),
                           selected: isSelected,
                           selectedColor: AppColors.successGreenLight,
-                          onSelected: (_) =>
-                              setState(() => _contributionAmount = amount.toDouble()),
+                          onSelected: (_) {
+                            setState(() {
+                              _contributionAmount = amount.toDouble();
+                              _customAmountController.text = amount.toString();
+                            });
+                          },
                         );
                       }).toList(),
                     ),
                     const SizedBox(height: 16),
-                    AppButton(
-                      label: 'Contribute GHS ${_contributionAmount.toStringAsFixed(0)}',
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Contribution initiated')),
-                        );
-                      },
-                      type: ButtonType.success,
-                      icon: Icons.favorite,
-                    ),
+                    if (_isLoading)
+                      const CircularProgressIndicator()
+                    else
+                      AppButton(
+                        label: 'Contribute GHS ${_contributionAmount.toStringAsFixed(0)}',
+                        onPressed: _showPaymentDialog,
+                        type: ButtonType.success,
+                        icon: Icons.favorite,
+                      ),
                   ],
                 ),
               ),

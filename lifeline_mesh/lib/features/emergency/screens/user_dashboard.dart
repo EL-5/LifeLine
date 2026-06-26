@@ -11,7 +11,9 @@ import '../../../providers/auth_provider.dart';
 import 'community_funding_view.dart';
 import '../../payments/screens/wallet_screen.dart';
 import '../../../providers/driver_provider.dart';
+import '../../../providers/driver_provider.dart';
 import '../../ai/screens/ai_triage_screen.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 class UserDashboard extends ConsumerStatefulWidget {
   const UserDashboard({super.key});
@@ -299,6 +301,14 @@ class _ProfileTab extends ConsumerWidget {
           onTap: () => context.push('/user/family'),
         ),
         const Divider(),
+        ListTile(
+          leading: const Icon(Icons.health_and_safety, color: AppColors.successGreen),
+          title: const Text('AI Health Specialist', style: TextStyle(fontWeight: FontWeight.w600)),
+          subtitle: const Text('Get your personalized preventative care plan', style: TextStyle(fontSize: 12)),
+          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          onTap: () => context.push('/user/health'),
+        ),
+        const Divider(),
         
         // Switch to Driver Portal (if driver)
         if (isDriver) ...[
@@ -317,7 +327,7 @@ class _ProfileTab extends ConsumerWidget {
           title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.w500)),
           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
           onTap: () {
-            // TODO: Navigate to settings
+            context.push('/user/settings');
           },
         ),
         ListTile(
@@ -325,7 +335,7 @@ class _ProfileTab extends ConsumerWidget {
           title: const Text('Help & Support', style: TextStyle(fontWeight: FontWeight.w500)),
           trailing: const Icon(Icons.arrow_forward_ios, size: 16),
           onTap: () {
-            // TODO: Navigate to help
+            context.push('/user/help');
           },
         ),
       ],

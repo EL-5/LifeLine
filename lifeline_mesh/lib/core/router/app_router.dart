@@ -11,6 +11,7 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/otp_screen.dart';
 import '../../features/auth/screens/role_selection_screen.dart';
 import '../../features/auth/screens/profile_setup_screen.dart';
+import '../../features/ai/screens/ai_health_specialist_screen.dart';
 import '../../features/emergency/screens/user_dashboard.dart';
 import '../../features/emergency/screens/sos_trigger_screen.dart';
 import '../../features/emergency/screens/symptom_selection_screen.dart';
@@ -35,6 +36,8 @@ import '../../features/admin/screens/analytics_screen.dart';
 import '../../features/admin/screens/user_management_screen.dart';
 import '../../features/admin/screens/fraud_monitoring_screen.dart';
 import '../../features/admin/screens/audit_log_screen.dart';
+import '../../features/profile/screens/settings_screen.dart';
+import '../../features/profile/screens/help_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -118,6 +121,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/user/family',
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const FamilyManagementScreen(),
+      ),
+      GoRoute(
+        path: '/user/health',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const AiHealthSpecialistScreen(),
+      ),
+      GoRoute(
+        path: '/user/settings',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/user/help',
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const HelpScreen(),
       ),
       GoRoute(
         path: '/user/apply_driver',
