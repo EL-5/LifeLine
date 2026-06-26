@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../providers/driver_provider.dart';
 import '../../../providers/emergency_provider.dart';
 import '../../../models/emergency_model.dart';
+import '../../../core/services/moolre_api_service.dart';
 
 class IncomingRequestScreen extends ConsumerStatefulWidget {
   final String emergencyId;
@@ -20,6 +23,7 @@ class IncomingRequestScreen extends ConsumerStatefulWidget {
 class _IncomingRequestScreenState extends ConsumerState<IncomingRequestScreen> {
   late PageController _pageController;
   bool _isControllerInitialized = false;
+  bool _isAccepting = false;
 
   @override
   void dispose() {
@@ -239,7 +243,33 @@ class _IncomingRequestScreenState extends ConsumerState<IncomingRequestScreen> {
                     Expanded(
                       flex: 1,
                       child: ElevatedButton(
-                        onPressed: () => context.push('/driver/navigate/${emergency.id}'),
+                        onPressed: _isAccepting ? null : () async {
+                          setState(() => _isAccepting = true);
+                          try {
+                            final client = Supabase.instance.client;
+                            await client.from('emergencies').update({'status': 'driver_assigned'}).eq('id', emergency.id);
+
+                            // Send WhatsApp to Patient
+                            final moolre = ref.read(moolreApiServiceProvider);
+                            final patientData = await client.from('users').select('phone, full_name').eq('id', emergency.patientId).maybeSingle();
+                            if (patientData != null && patientData['phone'] != null) {
+                              final phone = patientData['phone'] as String;
+                              final driverName = client.auth.currentUser?.userMetadata?['full_name'] ?? 'A Driver';
+                              await moolre.sendEmergencyWhatsApp(
+                                phone: phone,
+                                message: '🚑 *Ambulance Dispatched*\n\n$driverName has accepted your emergency request and is currently en route to your location. Keep your Lifeline app open for live tracking.'
+                              );
+                            }
+
+                            if (mounted) {
+                              context.pushReplacement('/driver/navigate/${emergency.id}');
+                            }
+                          } catch (e) {
+                            debugPrint('Accept error: $e');
+                          } finally {
+                            if (mounted) setState(() => _isAccepting = false);
+                          }
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.successGreen,
                           foregroundColor: Colors.white,
@@ -248,9 +278,11 @@ class _IncomingRequestScreenState extends ConsumerState<IncomingRequestScreen> {
                           elevation: 8,
                           shadowColor: AppColors.successGreen.withOpacity(0.5),
                         ),
-                        child: const FittedBox(
+                        child: FittedBox(
                           fit: BoxFit.scaleDown,
-                          child: Text('ACCEPT DISPATCH', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, letterSpacing: 0.5)),
+                          child: _isAccepting 
+                             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
+                             : const Text('ACCEPT DISPATCH', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, letterSpacing: 0.5)),
                         ),
                       ).animate(onPlay: (c) => c.repeat(reverse: true)).shimmer(duration: 2.seconds, color: Colors.white30),
                     ),

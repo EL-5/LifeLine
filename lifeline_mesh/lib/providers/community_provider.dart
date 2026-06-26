@@ -48,15 +48,19 @@ final myContributionsProvider =
 class WalletSummary {
   final double totalContributed;
   final double totalReceived;
+  final double totalDeposited;
+  final double totalSpentFromWallet;
   final int campaignsSupported;
 
   const WalletSummary({
     this.totalContributed = 0,
     this.totalReceived = 0,
+    this.totalDeposited = 0,
+    this.totalSpentFromWallet = 0,
     this.campaignsSupported = 0,
   });
 
-  double get balance => totalReceived - totalContributed;
+  double get balance => totalReceived + totalDeposited - totalSpentFromWallet;
 }
 
 final walletSummaryProvider = FutureProvider<WalletSummary>((ref) async {
@@ -73,10 +77,13 @@ final walletSummaryProvider = FutureProvider<WalletSummary>((ref) async {
       totalContributed:
           (data['total_contributed'] as num?)?.toDouble() ?? 0.0,
       totalReceived: (data['total_received'] as num?)?.toDouble() ?? 0.0,
+      totalDeposited: (data['total_deposited'] as num?)?.toDouble() ?? 0.0,
+      totalSpentFromWallet: (data['total_spent_from_wallet'] as num?)?.toDouble() ?? 0.0,
       campaignsSupported:
           (data['campaigns_supported'] as num?)?.toInt() ?? 0,
     );
-  } catch (_) {
+  } catch (e) {
+    print('Error loading wallet summary: $e');
     return const WalletSummary();
   }
 });

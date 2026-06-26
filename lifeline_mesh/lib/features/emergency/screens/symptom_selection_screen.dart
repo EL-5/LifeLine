@@ -7,6 +7,7 @@ import '../../../core/theme/colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/widgets/app_button.dart';
 import '../../../core/constants/api_constants.dart';
+import '../../../core/services/moolre_api_service.dart';
 
 class SymptomSelectionScreen extends ConsumerStatefulWidget {
   const SymptomSelectionScreen({super.key});
@@ -139,6 +140,29 @@ class _SymptomSelectionScreenState
       }
 
       final emergencyId = data['emergency']['id'] as String;
+
+      // Trigger WhatsApp SOS Alerts to Family Members
+      try {
+        final moolre = ref.read(moolreApiServiceProvider);
+        final fconns = await client.from('family_connections').select('family_member_id').eq('user_id', userId);
+        
+        if ((fconns as List).isNotEmpty) {
+          final ids = fconns.map((e) => e['family_member_id']).toList();
+          final usersData = await client.from('users').select('phone').inFilter('id', ids);
+          
+          for (final u in usersData as List) {
+            final phone = u['phone'] as String?;
+            if (phone != null && phone.isNotEmpty) {
+              await moolre.sendEmergencyWhatsApp(
+                phone: phone, 
+                message: '🚨 *SOS ALERT from Lifeline Mesh!*\n\nAn emergency has been triggered by your family member. Please check your Lifeline app to track their live location and dispatch status immediately.\n\nEmergency Ref: #$emergencyId'
+              );
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('Failed to send WhatsApp SOS alerts: $e');
+      }
 
       if (mounted) {
         context.pushReplacement('/patient/track/$emergencyId');

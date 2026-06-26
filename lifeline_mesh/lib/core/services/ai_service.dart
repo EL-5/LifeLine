@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../providers/medical_profile_provider.dart';
 
 final aiServiceProvider = Provider<AiService>((ref) {
   return AiService();
@@ -34,7 +36,7 @@ class AiService {
   }
 
   /// Get a first-aid text response from the AI assistant.
-  Future<String> getFirstAidAdvice(String userQuery) async {
+  Future<String> getFirstAidAdvice(String userQuery, {MedicalProfile? medicalProfile}) async {
     try {
       debugPrint('AI Service: Generating triage advice for "$userQuery"');
       
@@ -43,7 +45,19 @@ class AiService {
         return "⚠️ Gemini API Key not configured. Please add it to your .env file to enable Real AI Triage.";
       }
 
-      final content = [Content.text(userQuery)];
+      String prompt = userQuery;
+      if (medicalProfile != null) {
+        prompt = '''
+${medicalProfile.toAiPromptFormat()}
+
+User's Current Symptoms/Query:
+"$userQuery"
+
+Please provide triage and first-aid advice taking the above medical profile into account. If they have allergies or conditions relevant to the symptoms, highlight them.
+''';
+      }
+
+      final content = [Content.text(prompt)];
       final response = await model.generateContent(content);
       
       return response.text ?? "I'm having trouble understanding. Please use the SOS button immediately if this is an emergency.";

@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/widgets/app_button.dart';
-import '../../../providers/emergency_provider.dart';
+import '../../../providers/emergency_provider.dart' hide communityEmergenciesProvider;
+import '../../../providers/community_provider.dart';
 import '../../../core/services/moolre_api_service.dart';
 
 class CommunityFundingView extends ConsumerWidget {
@@ -157,6 +158,7 @@ class _DonationModalBottomSheet extends ConsumerStatefulWidget {
 class _DonationModalBottomSheetState extends ConsumerState<_DonationModalBottomSheet> {
   double _amount = 50;
   bool _isLoading = false;
+  String _paymentMethod = 'moolre'; // 'moolre' or 'wallet'
   final TextEditingController _customAmountController = TextEditingController(text: '50');
   final TextEditingController _phoneController = TextEditingController();
   String _selectedNetwork = 'MTN';
@@ -169,24 +171,40 @@ class _DonationModalBottomSheetState extends ConsumerState<_DonationModalBottomS
   }
 
   Future<void> _processPayment() async {
-    if (_phoneController.text.isEmpty) {
+    if (_paymentMethod == 'moolre' && _phoneController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter Mobile Money Number')));
       return;
     }
 
     setState(() => _isLoading = true);
     try {
-      final moolre = ref.read(moolreApiServiceProvider);
-      
-      // 1. Process Moolre Payment
-      final success = await moolre.fundCommunityPool(
-        amount: _amount,
-        phone: _phoneController.text,
-      );
-      
-      if (success) {
+      if (_paymentMethod == 'wallet') {
+        final wallet = ref.read(walletSummaryProvider).value;
+        if (wallet == null || wallet.balance < _amount) {
+           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Insufficient Wallet Balance. Please top up first.')));
+           setState(() => _isLoading = false);
+           return;
+        }
+        await EmergencyFundingService.contribute(widget.emergencyId, _amount, paymentMethod: 'wallet');
+      } else {
+        final moolre = ref.read(moolreApiServiceProvider);
+        
+        // 1. Process Moolre Payment
+        final success = await moolre.fundCommunityPool(
+          amount: _amount,
+          phone: _phoneController.text,
+        );
+        
+        if (!success) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment Error: Could not initiate payment via Moolre.')));
+          }
+          setState(() => _isLoading = false);
+          return;
+        }
+
         // 2. Add it up in the backend
-        await EmergencyFundingService.contribute(widget.emergencyId, _amount);
+        await EmergencyFundingService.contribute(widget.emergencyId, _amount, paymentMethod: 'mobile_money');
         
         // 3. Send SMS
         final catName = widget.category.replaceAll('_', ' ').toUpperCase();
@@ -195,14 +213,20 @@ class _DonationModalBottomSheetState extends ConsumerState<_DonationModalBottomS
           message: 'Thank you for your generous contribution of GHS ${_amount.toStringAsFixed(0)} to the $catName! Your support is actively saving a life.',
         );
 
-        if (mounted) {
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Thank you! GHS ${_amount.toStringAsFixed(0)} contributed successfully.')));
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment Error: Could not initiate payment via Moolre.')));
-        }
+        // 4. Send Digital Receipt via WhatsApp
+        await moolre.sendEmergencyWhatsApp(
+          phone: _phoneController.text,
+          message: '🧾 *Moolre Startup Cup / Lifeline Mesh Receipt*\n\nThank you for your generous contribution of *GHS ${_amount.toStringAsFixed(0)}* to the $catName!\n\nYour support is actively saving a life. View live updates on the Lifeline Dashboard.',
+        );
+      }
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Thank you! GHS ${_amount.toStringAsFixed(0)} contributed successfully.')));
+        // Refresh the providers so UI updates immediately
+        ref.invalidate(walletSummaryProvider);
+        ref.invalidate(myContributionsProvider);
+        ref.invalidate(communityEmergenciesProvider);
       }
     } catch (e) {
       if (mounted) {
@@ -278,41 +302,70 @@ class _DonationModalBottomSheetState extends ConsumerState<_DonationModalBottomS
           ),
           
           const SizedBox(height: 24),
-          // Phone Input
-          TextField(
-            controller: _phoneController,
-            keyboardType: TextInputType.phone,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              labelText: 'Mobile Money Number',
-              labelStyle: const TextStyle(color: Colors.white70),
-              filled: true,
-              fillColor: const Color(0xFF0D1117),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-            ),
+          // Payment Method Selector
+          Row(
+            children: [
+              Expanded(
+                child: RadioListTile<String>(
+                  title: const Text('Mobile Money', style: TextStyle(color: Colors.white, fontSize: 13)),
+                  value: 'moolre',
+                  groupValue: _paymentMethod,
+                  onChanged: (val) => setState(() => _paymentMethod = val!),
+                  activeColor: AppColors.successGreen,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              Expanded(
+                child: RadioListTile<String>(
+                  title: const Text('Wallet Balance', style: TextStyle(color: Colors.white, fontSize: 13)),
+                  value: 'wallet',
+                  groupValue: _paymentMethod,
+                  onChanged: (val) => setState(() => _paymentMethod = val!),
+                  activeColor: AppColors.trustBlue,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            value: _selectedNetwork,
-            dropdownColor: const Color(0xFF161B22),
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              labelText: 'Network',
-              labelStyle: const TextStyle(color: Colors.white70),
-              filled: true,
-              fillColor: const Color(0xFF0D1117),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+          
+          if (_paymentMethod == 'moolre') ...[
+            // Phone Input
+            TextField(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Mobile Money Number',
+                labelStyle: const TextStyle(color: Colors.white70),
+                filled: true,
+                fillColor: const Color(0xFF0D1117),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+              ),
             ),
-            items: ['MTN', 'VODAFONE', 'AIRTELTIGO'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-            onChanged: (v) => setState(() => _selectedNetwork = v!),
-          ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _selectedNetwork,
+              dropdownColor: const Color(0xFF161B22),
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Network',
+                labelStyle: const TextStyle(color: Colors.white70),
+                filled: true,
+                fillColor: const Color(0xFF0D1117),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+              ),
+              items: ['MTN', 'VODAFONE', 'AIRTELTIGO'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+              onChanged: (v) => setState(() => _selectedNetwork = v!),
+            ),
+          ],
 
           const SizedBox(height: 24),
           if (_isLoading)
             const CircularProgressIndicator()
           else
             AppButton(
-              label: 'Pay via Moolre',
+              label: _paymentMethod == 'wallet' ? 'Pay from Wallet' : 'Pay via Moolre',
               onPressed: _processPayment,
               type: ButtonType.success,
               icon: Icons.check_circle,

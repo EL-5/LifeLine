@@ -7,6 +7,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/colors.dart';
 import '../../../core/services/ai_service.dart';
+import '../../../providers/medical_profile_provider.dart';
 
 class AiTriageScreen extends ConsumerStatefulWidget {
   const AiTriageScreen({super.key});
@@ -100,7 +101,9 @@ class _AiTriageScreenState extends ConsumerState<AiTriageScreen> {
     _scrollToBottom();
 
     final aiService = ref.read(aiServiceProvider);
-    String response = await aiService.getFirstAidAdvice(text);
+    final profile = ref.read(medicalProfileProvider).value;
+    
+    String response = await aiService.getFirstAidAdvice(text, medicalProfile: profile);
 
     bool triggerSos = false;
     if (response.contains('[TRIGGER_SOS]')) {

@@ -77,7 +77,7 @@ final communityEmergenciesProvider = StreamProvider<List<EmergencyModel>>((ref) 
 });
 
 class EmergencyFundingService {
-  static Future<void> contribute(String emergencyId, double amount) async {
+  static Future<void> contribute(String emergencyId, double amount, {String paymentMethod = 'mobile_money'}) async {
     final client = Supabase.instance.client;
     final userId = client.auth.currentUser?.id;
     if (userId == null) return;
@@ -88,7 +88,7 @@ class EmergencyFundingService {
       'emergency_id': emergencyId,
       'contributor_id': userId,
       'amount': amount,
-      'payment_method': 'MOOLRE_MOBILE_MONEY',
+      'payment_method': paymentMethod,
     });
   }
 }

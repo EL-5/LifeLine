@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/colors.dart';
 import '../../../providers/community_provider.dart';
+import '../../../core/services/moolre_api_service.dart';
 
 class WalletScreen extends ConsumerWidget {
   const WalletScreen({super.key});
@@ -28,12 +30,12 @@ class WalletScreen extends ConsumerWidget {
                   child: Column(
                     children: [
                       const Text(
-                        'Total Contributed',
+                        'Available Balance',
                         style: TextStyle(color: Colors.white70, fontSize: 14),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'GHS ${wallet.totalContributed.toStringAsFixed(2)}',
+                        'GHS ${wallet.balance.toStringAsFixed(2)}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 40,
@@ -46,10 +48,11 @@ class WalletScreen extends ConsumerWidget {
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Top Up via Mobile Money — coming soon'),
-                                  ),
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  backgroundColor: Colors.transparent,
+                                  builder: (context) => const _TopUpBottomSheet(),
                                 );
                               },
                               icon: const Icon(Icons.add),
@@ -280,3 +283,170 @@ List<Map<String, dynamic>> _mockPaymentMethods = [
     'isLinked': false,
   },
 ];
+
+class _TopUpBottomSheet extends ConsumerStatefulWidget {
+  const _TopUpBottomSheet();
+
+  @override
+  ConsumerState<_TopUpBottomSheet> createState() => _TopUpBottomSheetState();
+}
+
+class _TopUpBottomSheetState extends ConsumerState<_TopUpBottomSheet> {
+  double _amount = 100;
+  bool _isLoading = false;
+  final TextEditingController _customAmountController = TextEditingController(text: '100');
+  final TextEditingController _phoneController = TextEditingController();
+
+  @override
+  void dispose() {
+    _customAmountController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _processTopUp() async {
+    if (_phoneController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter Mobile Money Number')));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final moolre = ref.read(moolreApiServiceProvider);
+      
+      // We simulate top-up with the same payment endpoint
+      final success = await moolre.fundCommunityPool(
+        amount: _amount,
+        phone: _phoneController.text,
+      );
+      
+      if (success) {
+        final client = Supabase.instance.client;
+        final userId = client.auth.currentUser?.id;
+        if (userId != null) {
+          // Insert top-up directly into the new wallet_deposits table
+          await client.from('wallet_deposits').insert({
+            'user_id': userId,
+            'amount': _amount,
+            'moolre_reference': 'TOPUP-${DateTime.now().millisecondsSinceEpoch}'
+          });
+
+          if (mounted) {
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('GHS ${_amount.toStringAsFixed(0)} added to wallet successfully.')));
+            // Refresh wallet summary
+            ref.invalidate(walletSummaryProvider);
+          }
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Top-up failed. Please try again.')));
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFF161B22),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('Top Up Wallet', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
+          const SizedBox(height: 8),
+          const Text('Enter amount to add via Mobile Money', style: TextStyle(color: Colors.white70)),
+          const SizedBox(height: 24),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [50.0, 100.0, 200.0].map((amt) {
+              final isSelected = _amount == amt;
+              return ChoiceChip(
+                label: Text('GHS ${amt.toInt()}'),
+                selected: isSelected,
+                onSelected: (selected) {
+                  if (selected) {
+                    setState(() {
+                      _amount = amt;
+                      _customAmountController.text = amt.toInt().toString();
+                    });
+                  }
+                },
+                selectedColor: AppColors.trustBlue,
+                labelStyle: TextStyle(color: isSelected ? Colors.white : Colors.white70),
+                backgroundColor: const Color(0xFF0D1117),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _customAmountController,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              labelText: 'Custom Amount (GHS)',
+              labelStyle: const TextStyle(color: Colors.white54),
+              filled: true,
+              fillColor: const Color(0xFF0D1117),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+              prefixText: 'GHS ',
+              prefixStyle: const TextStyle(color: Colors.white70),
+            ),
+            onChanged: (val) {
+              final parsed = double.tryParse(val);
+              if (parsed != null) {
+                setState(() => _amount = parsed);
+              }
+            },
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              labelText: 'Mobile Money Number',
+              labelStyle: const TextStyle(color: Colors.white54),
+              filled: true,
+              fillColor: const Color(0xFF0D1117),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+              prefixIcon: const Icon(Icons.phone, color: Colors.white54),
+            ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: _isLoading ? null : _processTopUp,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.trustBlue,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: _isLoading
+                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                : Text('Top Up GHS ${_amount.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          ),
+        ],
+      ),
+    );
+  }
+}
