@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Emergency } from '../hooks/useRealtimeEmergencies';
+import type { Emergency } from '../hooks/useRealtimeEmergencies';
 import { supabase } from '../lib/supabase';
 
 const AVATARS = ['#EF4444', '#3B82F6', '#8B5CF6', '#10B981', '#F59E0B'];
