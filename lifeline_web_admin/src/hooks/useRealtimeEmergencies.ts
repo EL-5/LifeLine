@@ -14,6 +14,11 @@ export type Emergency = {
   patient_phone?: string;
   driver_id?: string;
   driver_name?: string;
+  target_amount: number;
+  raised_amount: number;
+  patient_confirmed_pickup?: boolean;
+  patient_confirmed_dropoff?: boolean;
+  hospital_confirmed_arrival?: boolean;
 };
 
 export function useRealtimeEmergencies() {

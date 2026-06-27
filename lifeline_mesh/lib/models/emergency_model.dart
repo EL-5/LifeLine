@@ -14,6 +14,9 @@ class EmergencyModel {
   final double targetAmount;
   final double raisedAmount;
   final bool fraudFlag;
+  final bool patientConfirmedPickup;
+  final bool patientConfirmedDropoff;
+  final bool hospitalConfirmedArrival;
   final String? aiSummary;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -31,6 +34,9 @@ class EmergencyModel {
     this.targetAmount = 0.0,
     this.raisedAmount = 0.0,
     this.fraudFlag = false,
+    this.patientConfirmedPickup = false,
+    this.patientConfirmedDropoff = false,
+    this.hospitalConfirmedArrival = false,
     this.aiSummary,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -55,6 +61,9 @@ class EmergencyModel {
       targetAmount: (json['target_amount'] as num?)?.toDouble() ?? 0.0,
       raisedAmount: (json['raised_amount'] as num?)?.toDouble() ?? 0.0,
       fraudFlag: json['fraud_flag'] as bool? ?? false,
+      patientConfirmedPickup: json['patient_confirmed_pickup'] as bool? ?? false,
+      patientConfirmedDropoff: json['patient_confirmed_dropoff'] as bool? ?? false,
+      hospitalConfirmedArrival: json['hospital_confirmed_arrival'] as bool? ?? false,
       aiSummary: json['ai_summary'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
@@ -79,7 +88,10 @@ class EmergencyModel {
       'target_amount': targetAmount,
       'raised_amount': raisedAmount,
       'fraud_flag': fraudFlag,
-      'ai_summary': aiSummary,
+      'patient_confirmed_pickup': patientConfirmedPickup,
+      'patient_confirmed_dropoff': patientConfirmedDropoff,
+      'hospital_confirmed_arrival': hospitalConfirmedArrival,
+      'aiSummary': aiSummary,
     };
   }
 

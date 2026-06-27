@@ -34,6 +34,14 @@ const EmergencyTable: React.FC<{ emergencies: Emergency[] }> = ({ emergencies })
     }
   };
 
+  const handleConfirmArrival = async (id: string) => {
+    try {
+      await supabase.from('emergencies').update({ hospital_confirmed_arrival: true }).eq('id', id);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   if (activeEmergencies.length === 0) {
     return (
       <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-dim)' }}>
@@ -115,9 +123,19 @@ const EmergencyTable: React.FC<{ emergencies: Emergency[] }> = ({ emergencies })
                       Acknowledge
                     </button>
                   )}
-                  {em.status === 'hospital_prepared' && (
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: '#3B82F6', marginRight: '8px' }}>
-                      ✓ Prepared
+                  {em.status === 'hospital_prepared' && !em.hospital_confirmed_arrival && (
+                    <button 
+                      className="row-btn" 
+                      style={{ color: '#fff', background: '#3B82F6', padding: '4px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600, border: 'none', cursor: 'pointer', marginRight: '8px' }}
+                      title="Confirm Ambulance Arrival"
+                      onClick={() => handleConfirmArrival(em.id)}
+                    >
+                      Confirm Arrival
+                    </button>
+                  )}
+                  {em.hospital_confirmed_arrival && (
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: '#10B981', marginRight: '8px' }}>
+                      ✓ Arrived
                     </span>
                   )}
                   <button className="row-btn" title="View Details">

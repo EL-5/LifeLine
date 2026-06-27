@@ -10,6 +10,7 @@ import '../../../core/services/ai_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../../core/services/supabase_service.dart';
 
 class EmergencyLiveTrackingScreen extends ConsumerWidget {
   final String emergencyId;
@@ -279,6 +280,81 @@ class _TrackingContentState extends ConsumerState<_TrackingContent> {
                             await launchUrl(uri);
                           }
                         },
+                      ),
+                    ),
+                  ],
+                  if (widget.emergency.status.index >= EmergencyStatus.driverArrived.index && !widget.emergency.patientConfirmedPickup) ...[
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.trustBlue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: const Text('Confirm Driver Pickup', style: TextStyle(fontWeight: FontWeight.w600)),
+                        onPressed: () async {
+                          try {
+                            await ref.read(supabaseServiceProvider).client
+                                .from('emergencies')
+                                .update({'patient_confirmed_pickup': true})
+                                .eq('id', widget.emergency.id);
+                          } catch (e) {
+                            debugPrint('Error confirming pickup: $e');
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                  if (widget.emergency.patientConfirmedPickup && (widget.emergency.status == EmergencyStatus.enRouteHospital || widget.emergency.status == EmergencyStatus.arrivedHospital || widget.emergency.status == EmergencyStatus.hospitalPrepared) && !widget.emergency.patientConfirmedDropoff) ...[
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.successGreen,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        icon: const Icon(Icons.flag),
+                        label: const Text('Confirm Dropoff at Hospital', style: TextStyle(fontWeight: FontWeight.w600)),
+                        onPressed: () async {
+                          try {
+                            await ref.read(supabaseServiceProvider).client
+                                .from('emergencies')
+                                .update({'patient_confirmed_dropoff': true})
+                                .eq('id', widget.emergency.id);
+                          } catch (e) {
+                            debugPrint('Error confirming dropoff: $e');
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                  if (widget.emergency.patientConfirmedDropoff) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.successGreen.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.check_circle, color: AppColors.successGreen),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Dropoff Confirmed. Awaiting hospital validation.',
+                              style: TextStyle(color: AppColors.successGreen, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ]
